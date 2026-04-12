@@ -1,0 +1,21 @@
+services:
+  speedtest:
+    build: .
+    ports:
+      - "4855:4855"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=false
+      - SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
+    restart: unless-stopped
+    network_mode: "bridge"  # Or use specific IP/port if needed
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+          cpus: 0.5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.speedtest.rule=Host(`speedtest.example.com`)"
+      - "traefik.http.routers.speedtest.entrypoints=websecure"
+      - "traefik.http.routers.speedtest.tls.certresolver=letsencrypt"

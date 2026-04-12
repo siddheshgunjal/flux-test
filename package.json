@@ -1,0 +1,24 @@
+{
+  "name": "fluxtest",
+  "version": "0.1.0",
+  "description": "FluxTest is a self-hosted server network test application",
+  "scripts": {
+    "build:tailwind": "npx tailwindcss -o static/lib/css/tailwind.min.css --minify",
+    "build:styles": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --minify",
+    "build": "npm-run-all --parallel build:*",
+    "clean": "rm -rf static/lib",
+    "watch:tailwind": "npx tailwindcss -o static/lib/css/tailwind.min.css --watch",
+    "watch:styles": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --watch",
+    "watch": "npm-run-all --parallel watch:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.12",
+    "cssnano": "^7.1.2",
+    "npm-run-all": "^1.1.3",
+    "postcss": "^8.4.38",
+    "postcss-cli": "^10.1.0"
+  },
+  "dependencies": {
+    "tailwind": "^4.0.0"
+  }
+}

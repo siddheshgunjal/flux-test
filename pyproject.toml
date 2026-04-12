@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "FluxTest"
+version = "0.1.0"
+description = "FluxTest is a self-hosted server network test application"
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "FluxTest Maintainers" },
+]
+keywords = ["flask", "web", "python"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Flask",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+]
+dependencies = [
+    "flask>=3.1.3",
+    "gunicorn>=25.3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/siddheshgunjal/flux-test"
+Repository = "https://github.com/siddheshgunjal/flux-test"
+Issues = "https://github.com/siddheshgunjal/flux-test/issues"
+
+[tool.hatch.build.targets.wheel]
+include = ["app.py", "templates/**", "static/**"]
+
+[tool.hatch.build.targets.sdist]
+include = ["app.py", "templates/**", "static/**", "README.md"]
