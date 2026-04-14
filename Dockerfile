@@ -22,6 +22,7 @@ RUN uv sync --no-dev --no-install-project
 
 # Copy application
 COPY app.py .
+COPY gunicorn.conf.py .
 COPY templates/ templates/
 COPY static/js/ static/js/
 COPY static/image/ static/image/
@@ -43,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=3s \
 
 # Run via the virtualenv created by uv sync
 ENV PATH="/app/.venv/bin:$PATH"
-CMD ["gunicorn", "--bind", "0.0.0.0:4855", "--workers", "2", "app:app"]
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "app:app"]
