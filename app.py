@@ -16,14 +16,6 @@ def get_server_name():
     """Prefer configured server name, then fallback to runtime hostname."""
     return os.getenv('SERVER_NAME') or socket.gethostname()
 
-
-def get_file_hash(data):
-    """Calculate SHA256 of data"""
-    if isinstance(data, bytes):
-        return hashlib.sha256(data).hexdigest()
-    return hashlib.sha256(data.encode()).hexdigest()
-
-
 def _generate_chunks(size_mb):
     """Yield random data in 1 MB chunks to avoid large allocations."""
     chunk_size = 1024 * 1024
@@ -89,8 +81,7 @@ def upload():
         'status': 'received',
         'received_bytes': len(data),
         'duration_seconds': round(duration, 3),
-        'speed_mbps': round(speed_mbps, 2),
-        'hash': get_file_hash(data)
+        'speed_mbps': round(speed_mbps, 2)
     })
 
 
