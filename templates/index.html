@@ -7,13 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='lib/css/index.css') }}">
 </head>
-<body class="bg-[#0a0a0a] text-gray-200 h-screen overflow-hidden flex flex-col">
+<body class="bg-[#0a0a0a] text-gray-200 min-h-screen overflow-x-hidden flex flex-col">
     <!-- Animated Background -->
     <div class="flux-mesh-bg"></div>
     <div id="completion-overlay" class="completion-overlay"></div>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex flex-col items-center justify-start h-[calc(100vh-3.75rem)] px-3 sm:px-4 py-3 sm:py-5 overflow-hidden">
+    <main class="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-start px-3 sm:px-4 pt-3 sm:pt-5 pb-24 sm:pb-28 overflow-y-auto">
         
         <!-- Header -->
         <div class="w-full max-w-3xl mx-auto mb-3 sm:mb-5 text-center relative z-20">
@@ -195,17 +195,17 @@
     <div id="status-bar" class="status-bar"></div>
 
     <!-- Footer -->
-    <footer class="z-10 py-2 px-4 border-t border-white/5 bg-black/40 backdrop-blur-md">
+    <footer class="fixed inset-x-0 bottom-0 z-30 shrink-0 py-2 px-4 border-t border-white/15 bg-white/5 backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
         <div class="max-w-4xl mx-auto flex justify-between items-center text-[10px] sm:text-xs text-gray-600 font-mono">
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                    <span>FluxTest v0.1.0</span>
+                    <span class="text-white">FluxTest v0.1.0</span>
                 </div>
             </div>
             
             <div class="flex items-center gap-2 sm:gap-4">
-                <span>Made by <a href="https://siddheshgunjal.github.io" target="_blank" class="text-cyan-400 hover:underline">Siddhesh Gunjal</a></span>
+                <span class="text-white">Made by <a href="https://siddheshgunjal.github.io" target="_blank" class="text-cyan-400 hover:underline">Siddhesh Gunjal</a></span>
             </div>
         </div>
     </footer>
