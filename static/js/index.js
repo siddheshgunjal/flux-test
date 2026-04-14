@@ -26,6 +26,8 @@ async function fetchSystemInfo() {
         document.getElementById('server-health').textContent   = health.status || 'Unknown';
         document.getElementById('server-health').classList.remove('text-red-500');
         document.getElementById('server-health').classList.add('text-green-500');
+        document.getElementById('download-size').textContent = `${DOWNLOAD_SIZE_MB}MB Random Bytes Download`;
+        document.getElementById('upload-size').textContent   = `${UPLOAD_SIZE_MB}MB Random Bytes Upload`;
         if (healthSt) {
             healthSt.classList.remove('bg-red-500');
             healthSt.classList.add('bg-green-500');

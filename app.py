@@ -28,7 +28,7 @@ def _generate_chunks(size_mb):
 @ app.route('/')
 def index():
     """Basic welcome endpoint"""
-    return render_template('index.html', server=get_server_name())
+    return render_template('index.html', server=get_server_name(), download_size=DOWNLOAD_SIZE_MB, upload_size=UPLOAD_SIZE_MB)
 
 @app.route('/health')
 def health():
