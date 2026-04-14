@@ -224,7 +224,9 @@ function runUploadTest() {
 
     return new Promise((resolve, reject) => {
         const xhr       = new XMLHttpRequest();
+        xhr.timeout = 120000; // Just in case, slightly above server-side timeout to allow finalization step
         const startTime = performance.now();
+        let didFinalizeHint = false;
 
         // Timer - updates elapsed time every second
         const timerHandle = setInterval(() => {
@@ -246,6 +248,13 @@ function runUploadTest() {
             document.getElementById('ul-bytes').textContent =
                 (event.loaded / 1024 / 1024).toFixed(1) + ' MB';
             setCircle('ul-circle', pct);
+
+            // Over tunnels/proxies, bytes can reach the edge before origin reply arrives.
+            // Show an explicit finalizing phase instead of appearing stuck.
+            if (!didFinalizeHint && event.loaded >= event.total) {
+                didFinalizeHint = true;
+                setStatus('Calculating Upload speed at server…', 'white');
+            }
         };
 
         xhr.onload = () => {
