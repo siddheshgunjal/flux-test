@@ -213,3 +213,8 @@ body {
     35% { opacity: 0.9; }
     100% { opacity: 0; transform: scale(1.12) rotate(135deg); }
 }
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

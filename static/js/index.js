@@ -89,9 +89,11 @@ function setupFluxAnimations() {
 // ── UI helpers ────────────────────────────────────────────────────────
 function setStatus(message, color) {
     const label = document.getElementById('btn-label');
+    const icon = document.getElementById('btn-icon');
     const colorMap = { green:'#22c55e', red:'#ef4444', purple:'#a855f7', cyan:'#06b6d4', white:'#ffffff' };
     label.textContent = message;
     label.style.color = colorMap[color] || '#ffffff';
+    icon.style.color = colorMap[color] || '#ffffff';
 }
 
 function setCircle(circleId, pct) {
@@ -116,9 +118,9 @@ function resetCard(prefix) {
 function disableButtons(disabled) {
     const btn = document.getElementById('start-all-btn');
     btn.disabled = disabled;
-    btn.querySelector('#btn-label').textContent = disabled ? 'Testing…' : 'Start Full Speed Test';
-    btn.querySelector('#btn-label').style.color = '';
-    btn.querySelector('#btn-icon').style.display = disabled ? 'none' : '';
+    btn.querySelector('#btn-icon').style.animation = disabled ? 'spin 1s linear infinite' : '';
+    btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    btn.querySelector('#btn-icon').style.color = disabled ? '' : '#22c55e';
 }
 
 function triggerCompletionEffect() {
