@@ -92,7 +92,7 @@ function setupFluxAnimations() {
 function setStatus(message, color) {
     const label = document.getElementById('btn-label');
     const icon = document.getElementById('btn-icon');
-    const colorMap = { green:'#22c55e', red:'#ef4444', purple:'#a855f7', cyan:'#06b6d4', white:'#ffffff' };
+    const colorMap = { green:'#22c55e', orange:'#f9ad16', red:'#ef4444', purple:'#a855f7', cyan:'#06b6d4', white:'#ffffff' };
     label.textContent = message;
     label.style.color = colorMap[color] || '#ffffff';
     icon.style.color = colorMap[color] || '#ffffff';
@@ -217,6 +217,11 @@ async function runDownloadTest() {
 function runUploadTest() {
     resetCard('ul');
     setStatus('Testing upload…', 'purple');
+    const uploadDelayHint = document.getElementById('upload-delay-hint');
+    if (uploadDelayHint) {
+        uploadDelayHint.textContent = '';
+        uploadDelayHint.style.opacity = '0';
+    }
 
     // Build buffer with crypto.getRandomValues (fast, ~ms for 50 MB)
     const sizeBytes = UPLOAD_SIZE_MB * 1024 * 1024;
@@ -231,6 +236,18 @@ function runUploadTest() {
         xhr.timeout = 120000; // Just in case, slightly above server-side timeout to allow finalization step
         const startTime = performance.now();
         let didFinalizeHint = false;
+        let delayedHintTimer = null;
+
+        const clearDelayedHint = () => {
+            if (delayedHintTimer) {
+                clearTimeout(delayedHintTimer);
+                delayedHintTimer = null;
+            }
+            if (uploadDelayHint) {
+                uploadDelayHint.style.opacity = '0';
+                uploadDelayHint.textContent = '';
+            }
+        };
 
         // Timer - updates elapsed time every second
         const timerHandle = setInterval(() => {
@@ -257,12 +274,19 @@ function runUploadTest() {
             // Show an explicit finalizing phase instead of appearing stuck.
             if (!didFinalizeHint && event.loaded >= event.total) {
                 didFinalizeHint = true;
-                setStatus('Calculating Upload speed at server…', 'white');
+                setStatus('Upload complete. Finalizing on server…', 'orange');
+                delayedHintTimer = window.setTimeout(() => {
+                    if (uploadDelayHint) {
+                        uploadDelayHint.textContent = 'Network tunnel or proxy may add extra delay before confirmation.';
+                        uploadDelayHint.style.opacity = '1';
+                    }
+                }, 5000);
             }
         };
 
         xhr.onload = () => {
             clearInterval(timerHandle);
+            clearDelayedHint();
             if (xhr.status >= 200 && xhr.status < 300) {
                 const totalSec  = (performance.now() - startTime) / 1000;
                 const finalMbps = totalSec > 0
@@ -281,8 +305,8 @@ function runUploadTest() {
             }
         };
 
-        xhr.onerror   = () => { clearInterval(timerHandle); reject(new Error('Upload request failed')); };
-        xhr.ontimeout = () => { clearInterval(timerHandle); reject(new Error('Upload timed out')); };
+        xhr.onerror   = () => { clearInterval(timerHandle); clearDelayedHint(); reject(new Error('Upload request failed')); };
+        xhr.ontimeout = () => { clearInterval(timerHandle); clearDelayedHint(); reject(new Error('Upload timed out')); };
 
         xhr.open('POST', '/upload');
         xhr.setRequestHeader('Content-Type', 'application/octet-stream');
