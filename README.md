@@ -33,7 +33,7 @@ It is not a public internet speed benchmark service and does not attempt to comp
 
 1. Create a file named docker-compose.yml:
 
-	```yaml
+	```yml
 	services:
 		speedtest:
 			image: ghcr.io/siddheshgunjal/flux-test:latest
