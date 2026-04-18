@@ -1,6 +1,6 @@
 # FluxTest
 
-![FluxTest Logo](/static/image/flux_logo_text.webp)
+![FluxTest Logo](https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_logo_text.webp)
 
 FluxTest is a self-hosted server network test application that measures:
 
@@ -9,7 +9,9 @@ FluxTest is a self-hosted server network test application that measures:
 - Upload throughput
 
 The app serves a browser UI and exposes HTTP endpoints for health checks and throughput testing between a client and your own hosted server.
-It is designed to run locally, in Docker, and as a published container image on GitHub Container Registry (GHCR).
+It is designed to run locally, in Docker.
+
+![FluxTest Demo](https://github.com/siddheshgunjal/flux-test/raw/refs/heads/main/static/videos/flux-test-demo.mp4)
 
 ## Intended Use
 
