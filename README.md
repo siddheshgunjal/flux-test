@@ -11,7 +11,10 @@ FluxTest is a self-hosted server network test application that measures:
 The app serves a browser UI and exposes HTTP endpoints for health checks and throughput testing between a client and your own hosted server.
 It is designed to run locally, in Docker.
 
-![FluxTest Demo](https://github.com/siddheshgunjal/flux-test/raw/refs/heads/main/static/videos/flux-test-demo.mp4)
+<video width="100%" controls>
+  <source src="https://github.com/siddheshgunjal/flux-test/raw/refs/heads/main/static/videos/flux-test-demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 ## Intended Use
 
@@ -116,7 +119,7 @@ The app will be available at:
 
 ```bash
 uv sync
-gunicorn --bind 0.0.0.0:4855 --workers 4 app:app
+gunicorn --bind 0.0.0.0:4855 --workers 2 app:app
 ```
 
 ## Local Testing with Docker
@@ -149,7 +152,7 @@ Note:
 - Default HTTP port: 4855
 - Download test size: 50 MB
 - Upload test size: 25 MB
-- Gunicorn workers in Docker image: 4
+- Gunicorn workers in Docker image: 2
 - Best used to validate client-to-your-server throughput and latency
 
 You can tune test sizes in app.py by editing DOWNLOAD_SIZE_MB and UPLOAD_SIZE_MB.
