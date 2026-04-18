@@ -11,10 +11,7 @@ FluxTest is a self-hosted server network test application that measures:
 The app serves a browser UI and exposes HTTP endpoints for health checks and throughput testing between a client and your own hosted server.
 It is designed to run locally, in Docker.
 
-<video width="100%" controls>
-  <source src="https://github.com/siddheshgunjal/flux-test/raw/refs/heads/main/static/videos/flux-test-demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+[<img alt="Static Badge" src="https://img.shields.io/badge/Watch%20Demo-click_to_watch-informational?style=for-the-badge&logo=youtube&logoColor=white&color=blue">][demo]
 
 ## Intended Use
 
@@ -210,3 +207,4 @@ Please cite flux-test in your publications if this is useful for your project/re
 [gh-issues]: https://github.com/siddheshgunjal/flux-test/issues
 [gh-contrib]: https://github.com/siddheshgunjal/flux-test/blob/main/CONTRIBUTING.md
 [portfolio]: https://siddheshgunjal.github.io
+[demo]: https://drive.google.com/file/d/1wUBIMy3lob654B6bx2i5B20lvt6TyD7J/view?usp=drive_link
