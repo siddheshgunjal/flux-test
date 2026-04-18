@@ -6,7 +6,6 @@ services:
     environment:
       - SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
     restart: unless-stopped
-    network_mode: "bridge"  # Or use specific IP/port if needed
     deploy:
       resources:
         reservations:
