@@ -4,7 +4,6 @@ services:
     ports:
       - "4855:4855"
     environment:
-      - FLASK_DEBUG=true
       - SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
     restart: unless-stopped
     network_mode: "bridge"  # Or use specific IP/port if needed

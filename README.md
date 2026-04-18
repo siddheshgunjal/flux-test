@@ -43,6 +43,16 @@ It is not a public internet speed benchmark service and does not attempt to comp
 		environment:
 		- SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
 		restart: unless-stopped
+		deploy:
+		resources:
+			reservations:
+			memory: 256M
+			cpus: 1
+		labels:
+		- "traefik.enable=true"
+		- "traefik.http.routers.speedtest.rule=Host(`speedtest.example.com`)"
+		- "traefik.http.routers.speedtest.entrypoints=websecure"
+		- "traefik.http.routers.speedtest.tls.certresolver=letsencrypt"
 	```
 
 2. Start:
