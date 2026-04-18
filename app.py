@@ -6,6 +6,7 @@ import socket
 import os
 
 app = Flask(__name__)
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 
 # Configuration
 DOWNLOAD_SIZE_MB = 50

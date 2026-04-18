@@ -41,8 +41,7 @@ It is not a public internet speed benchmark service and does not attempt to comp
 		ports:
 		- "4855:4855"
 		environment:
-		- FLASK_ENV=production
-		- FLASK_DEBUG=false
+		- SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
 		restart: unless-stopped
 	```
 
@@ -62,7 +61,7 @@ It is not a public internet speed benchmark service and does not attempt to comp
 
 ```bash
 docker pull ghcr.io/siddheshgunjal/flux-test:latest
-docker run --rm -p 4855:4855 ghcr.io/siddheshgunjal/flux-test:latest
+docker run --rm -p 4855:4855 -e SERVER_NAME=${HOSTNAME} ghcr.io/siddheshgunjal/flux-test:latest
 ```
 
 Access the UI at: http://your-ip:4855
