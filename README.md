@@ -17,16 +17,6 @@ FluxTest is intended for testing network performance of self-hosted infrastructu
 
 It is not a public internet speed benchmark service and does not attempt to compare your ISP speed against geographically distributed public test nodes.
 
-## Quick Start
-Pull and run the container image:
-
-```bash
-docker pull ghcr.io/OWNER/IMAGE:latest
-docker run --rm -p 4855:4855 ghcr.io/OWNER/IMAGE:latest
-```
-
-Access the UI at: http://your-ip:4855
-
 ## Features
 
 - Real-time latency measurement using repeated ping probes
@@ -36,6 +26,46 @@ Access the UI at: http://your-ip:4855
 - Container-ready deployment with Gunicorn
 - Reverse proxy-friendly Docker Compose labels (Traefik example)
 - Designed for private deployments and self-hosted diagnostics
+
+## Quick Start
+
+### Option A: Docker Compose
+
+1. Create a file named docker-compose.yml:
+
+	```yaml
+	services:
+	speedtest:
+		image: ghcr.io/siddheshgunjal/flux-test:latest
+		container_name: flux-test
+		ports:
+		- "4855:4855"
+		environment:
+		- FLASK_ENV=production
+		- FLASK_DEBUG=false
+		restart: unless-stopped
+	```
+
+2. Start:
+
+	```bash
+	docker compose -f docker-compose.yml up -d
+	```
+
+3. Stop:
+
+	```bash
+	docker compose -f docker-compose.yml down
+	```
+
+### Option B: Docker run
+
+```bash
+docker pull ghcr.io/siddheshgunjal/flux-test:latest
+docker run --rm -p 4855:4855 ghcr.io/siddheshgunjal/flux-test:latest
+```
+
+Access the UI at: http://your-ip:4855
 
 ## Project Structure
 
@@ -78,18 +108,13 @@ uv sync
 gunicorn --bind 0.0.0.0:4855 --workers 4 app:app
 ```
 
-## Docker
+## Local Testing with Docker
 
-### Pull and Run from GHCR
+Choose one of the methods below.
 
-```bash
-docker pull ghcr.io/OWNER/IMAGE:latest
-docker run --rm -p 4855:4855 ghcr.io/OWNER/IMAGE:latest
-```
+### Method 1: Run with Docker Compose (recommended for self-hosting)
 
-### Build Image
-
-### Run with Docker Compose
+Use the included compose file to build from source:
 
 ```bash
 docker compose up -d --build
@@ -98,12 +123,14 @@ docker compose up -d --build
 Stop:
 
 ```bash
-docker compose down
+docker compose down -v
 ```
+
+Access the UI at: http://your-ip:4855
 
 Note:
 
-- The compose file includes Traefik labels and an example host rule.
+- The default compose file includes Traefik labels and an example host rule.
 - Update domain, entrypoints, and certificate resolver for your environment.
 
 ## Operational Notes
@@ -129,10 +156,20 @@ You can tune test sizes in app.py by editing DOWNLOAD_SIZE_MB and UPLOAD_SIZE_MB
 
 ## Security and Production Guidance
 
-- Run behind TLS termination (Traefik, Nginx, or cloud load balancer)
-- Keep container base image and dependencies up to date
-- Use pinned tags for production deployments instead of latest
-- Treat this as an internal/self-hosted diagnostics tool, not a public speedtest platform
+### Built-in Security Features
+
+- **Cache Prevention**: Download endpoints include strict cache-control headers (`no-store, no-cache, must-revalidate`) to prevent sensitive test data from being cached
+- **Secure Streaming**: Download test uses memory-efficient chunked streaming (1 MB chunks) instead of loading full test data into memory, preventing memory exhaustion attacks
+- **Input Validation**: Upload endpoint validates data reception and handles edge cases gracefully
+- **Health Monitoring**: `/health` endpoint enables orchestration and monitoring without exposing operational details
+
+### Deployment Security
+
+- **TLS Termination**: Run behind TLS termination (Traefik, Nginx, or cloud load balancer) to encrypt data in transit
+- **Environment Variables**: Sensitive configuration (e.g., `SERVER_NAME`) is handled via environment variables, not hardcoded
+- **Dependency Management**: Regular updates to Python dependencies and base container image recommended
+- **Version Pinning**: Use specific version tags (e.g., `v1.0.0`) for production deployments instead of `latest`
+- **Internal Use Only**: Designed as an internal/self-hosted diagnostics tool for private infrastructure—do not expose publicly on the internet
 
 
 #  Support
@@ -155,3 +192,7 @@ Please cite flux-test in your publications if this is useful for your project/re
 
 # Maintainer :sunglasses:
 [<img alt="Static Badge" src="https://img.shields.io/badge/my_website-click_to_visit-informational?style=for-the-badge&logo=googlechrome&logoColor=white&color=black">][portfolio]
+
+[gh-issues]: https://github.com/siddheshgunjal/flux-test/issues
+[gh-contrib]: https://github.com/siddheshgunjal/flux-test/blob/main/CONTRIBUTING.md
+[portfolio]: https://siddheshgunjal.github.io
