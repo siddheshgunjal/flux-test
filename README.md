@@ -22,8 +22,10 @@ It is not a public internet speed benchmark service and does not attempt to comp
 ## Features
 
 - Real-time latency measurement using repeated ping probes
-- Streamed download test from server to browser
-- Upload test from browser to server with live progress
+- **Time-based download test**: server streams random data for a fixed 15 s window
+- **Time-based upload test**: browser streams random data to the server for a fixed 15 s window
+- Live progress rings, speed readout, and elapsed-time display for both tests
+- Guaranteed completion at any network speed — no timeout on slow connections
 - Health endpoint for monitoring and orchestration
 - Container-ready deployment with Gunicorn
 - Reverse proxy-friendly Docker Compose labels (Traefik example)
@@ -49,7 +51,7 @@ It is not a public internet speed benchmark service and does not attempt to comp
 				resources:
 					reservations:
 						memory: 256M
-						cpus: 1
+						cpus: 0.5
 			labels:
 				- "traefik.enable=true"
 				- "traefik.http.routers.speedtest.rule=Host(`speedtest.example.com`)"
@@ -147,12 +149,14 @@ Note:
 ## Operational Notes
 
 - Default HTTP port: 4855
-- Download test size: 50 MB
-- Upload test size: 25 MB
+- Download test duration: 15 s (server streams random data for exactly 15 s)
+- Upload test duration: 15 s (browser streams random data for exactly 15 s)
+- Full test completes in approximately 35 s (5 s latency probes + 15 s download + 15 s upload)
+- Works correctly at any network speed — from gigabit LAN to sub-1 Mbps WAN links
 - Gunicorn workers in Docker image: 2
 - Best used to validate client-to-your-server throughput and latency
 
-You can tune test sizes in app.py by editing DOWNLOAD_SIZE_MB and UPLOAD_SIZE_MB.
+You can adjust the test duration in `app.py` by editing `TEST_DURATION_SECONDS`.
 
 ## Troubleshooting
 
@@ -169,8 +173,9 @@ You can tune test sizes in app.py by editing DOWNLOAD_SIZE_MB and UPLOAD_SIZE_MB
 
 ### Built-in Security Features
 
-- **Cache Prevention**: Download endpoints include strict cache-control headers (`no-store, no-cache, must-revalidate`) to prevent sensitive test data from being cached
-- **Secure Streaming**: Download test uses memory-efficient chunked streaming (1 MB chunks) instead of loading full test data into memory, preventing memory exhaustion attacks
+- **Cache Prevention**: Download endpoints include strict cache-control headers (`no-store, no-cache, must-revalidate`) to prevent test data from being cached
+- **Secure Streaming**: Both download and upload use memory-efficient chunked streaming (1 MB / 64 KB chunks) — no large buffers are allocated server-side, preventing memory exhaustion
+- **Upload Safety Ceiling**: The server-side upload reader enforces a hard ceiling (`TEST_DURATION_SECONDS + 10 s`) so a misbehaving client cannot hold a worker indefinitely
 - **Input Validation**: Upload endpoint validates data reception and handles edge cases gracefully
 - **Health Monitoring**: `/health` endpoint enables orchestration and monitoring without exposing operational details
 

@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "description": "FluxTest is a self-hosted server network test application",
   "scripts": {
-    "build:tailwind": "npx tailwindcss -o static/lib/css/tailwind.min.css --minify",
-    "build:styles": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --minify",
-    "build": "npm-run-all --parallel build:*",
-    "clean": "rm -rf static/lib",
-    "watch:tailwind": "npx tailwindcss -o static/lib/css/tailwind.min.css --watch",
-    "watch:styles": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --watch",
+    "build:app_tailwind": "npx tailwindcss -o static/lib/css/tailwind.min.css --minify",
+    "build:app_styles": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --minify",
+    "build:website_tailwind": "npx tailwindcss -o website/lib/css/tailwind.min.css --minify",
+    "build:website_styles": "npx @tailwindcss/cli -i website/styles.css -o website/lib/css/styles.css --minify",
+    "build_app": "npm-run-all --parallel build:app_*",
+    "build_website": "npm-run-all --parallel build:website_*",
+    "clean": "rm -rf static/lib website/lib",
+    "watch:app_tailwind": "npx tailwindcss -o static/lib/css/tailwind.min.css --watch",
+    "watch:app_styles": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --watch",
+    "watch:website_tailwind": "npx tailwindcss -o website/lib/css/tailwind.min.css --watch",
+    "watch:website_styles": "npx @tailwindcss/cli -i website/styles.css -o website/lib/css/styles.css --watch",
     "watch": "npm-run-all --parallel watch:*"
   },
   "devDependencies": {

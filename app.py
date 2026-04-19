@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, Response, make_response, render_template
 import random
-import hashlib
 import time
 import socket
 import os
@@ -9,27 +8,24 @@ app = Flask(__name__)
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 
 # Configuration
-DOWNLOAD_SIZE_MB = 50
-UPLOAD_SIZE_MB = 25
+TEST_DURATION_SECONDS = 15
 
 
 def get_server_name():
     """Prefer configured server name, then fallback to runtime hostname."""
     return os.getenv('SERVER_NAME') or socket.gethostname()
 
-def _generate_chunks(size_mb):
-    """Yield random data in 1 MB chunks to avoid large allocations."""
+def _generate_chunks_for_duration(duration_seconds):
+    """Yield random data in 1 MB chunks for a fixed duration."""
     chunk_size = 1024 * 1024
-    total_bytes = size_mb * chunk_size
-    sent = 0
-    while sent < total_bytes:
-        yield random.randbytes(min(chunk_size, total_bytes - sent))
-        sent += chunk_size
+    end_time = time.time() + duration_seconds
+    while time.time() < end_time:
+        yield random.randbytes(chunk_size)
 
 @ app.route('/')
 def index():
     """Basic welcome endpoint"""
-    return render_template('index.html', server=get_server_name(), download_size=DOWNLOAD_SIZE_MB, upload_size=UPLOAD_SIZE_MB)
+    return render_template('index.html', server=get_server_name(), test_duration=TEST_DURATION_SECONDS)
 
 @app.route('/health')
 def health():
@@ -51,14 +47,12 @@ def ping():
 
 @app.route('/download', methods=['GET'])
 def download():
-    """Download test endpoint — streams random data to the client."""
-    size = DOWNLOAD_SIZE_MB * 1024 * 1024
-
+    """Download test endpoint — streams random data to the client for a fixed duration."""
     resp = Response(
-        _generate_chunks(DOWNLOAD_SIZE_MB),
+        _generate_chunks_for_duration(TEST_DURATION_SECONDS),
         content_type='application/octet-stream',
     )
-    resp.headers['Content-Length'] = str(size)
+    resp.headers['X-Test-Duration'] = str(TEST_DURATION_SECONDS)
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
@@ -67,20 +61,30 @@ def download():
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    """Upload test endpoint — client is responsible for timing accuracy."""
+    """Upload test endpoint — reads the client stream until it closes or the safety ceiling is hit."""
     start_time = time.time()
-    data = request.get_data()
+    received_bytes = 0
+    ceiling = TEST_DURATION_SECONDS + 10
+
+    while True:
+        if time.time() - start_time > ceiling:
+            break
+        chunk = request.stream.read(65536)
+        if not chunk:
+            break
+        received_bytes += len(chunk)
+
     duration = time.time() - start_time
 
-    if len(data) == 0:
+    if received_bytes == 0:
         return jsonify({'error': 'No data received'}), 400
 
-    speed_bytes = len(data) / duration if duration > 0 else 0
+    speed_bytes = received_bytes / duration if duration > 0 else 0
     speed_mbps = (speed_bytes / 1024 / 1024) * 8
 
     return jsonify({
         'status': 'received',
-        'received_bytes': len(data),
+        'received_bytes': received_bytes,
         'duration_seconds': round(duration, 3),
         'speed_mbps': round(speed_mbps, 2)
     })

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxTest — Self-Hosted Network Speed Test</title>
+    <meta name="description" content="FluxTest is a self-hosted network speed test for your own infrastructure. Measure latency, download, and upload throughput with a beautiful browser UI. Works at any connection speed.">
+    <meta property="og:title" content="FluxTest — Self-Hosted Network Speed Test">
+    <meta property="og:description" content="Time-based download & upload tests. Guaranteed completion at any network speed. Deploy with Docker in seconds.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_logo_text.webp">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/webp" href="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_square.webp">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="lib/css/tailwind.min.css">
+    <link rel="stylesheet" href="lib/css/styles.css">
+</head>
+<body class="bg-[#0a0a0a] text-gray-200 min-h-screen">
+
+    <!-- Animated Mesh Background -->
+    <div class="flux-mesh-bg"></div>
+
+    <!-- Floating Particles -->
+    <div id="particles" class="fixed inset-0 z-0 pointer-events-none overflow-hidden"></div>
+
+    <!-- ── Navigation ───────────────────────────────────────────────── -->
+    <nav class="flux-nav fixed inset-x-0 top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-1 flex items-center justify-between">
+            <a href="#" class="flex items-center gap-1 group">
+                <img src="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_square.webp"
+                     alt="FluxTest" class="w-16 h-16 object-contain">
+                <span class="text-3xl font-light text-white tracking-tight">
+                    Flux<span class="text-cyan-400">Test</span>
+                </span>
+            </a>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="#features" class="hidden sm:block text-base text-gray-400 hover:text-white transition-colors px-3 py-1.5">Features</a>
+                <a href="#quickstart" class="hidden sm:block text-base text-gray-400 hover:text-white transition-colors px-3 py-1.5">Quick Start</a>
+                <a href="https://github.com/siddheshgunjal/flux-test"
+                   target="_blank" rel="noopener"
+                   class="btn-primary flex items-center gap-2 text-base font-medium px-4 py-2 rounded-xl">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    <span class="hidden sm:inline">GitHub</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Hero ─────────────────────────────────────────────────────── -->
+    <section class="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-20 pb-16">
+
+        <!-- Status pill -->
+        <div class="status-pill text-sm font-mono px-3 py-1 rounded-full mb-6 reveal">
+            v0.1.1 · Self-hosted · Open Source
+        </div>
+
+        <!-- Headline -->
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-light text-center tracking-tight leading-tight max-w-3xl reveal" style="transition-delay:0.1s">
+            Network speed testing
+            <br>
+            <span class="gradient-text font-semibold">for your own server</span>
+        </h1>
+
+        <p class="mt-5 text-base sm:text-lg text-gray-400 text-center max-w-xl leading-relaxed reveal" style="transition-delay:0.2s">
+            FluxTest is a self-hosted speed test that measures latency, download, and upload throughput between a browser and <em>your</em> infrastructure — not a third-party CDN.
+        </p>
+
+        <!-- CTAs -->
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3 reveal" style="transition-delay:0.3s">
+            <a href="https://github.com/siddheshgunjal/flux-test"
+               target="_blank" rel="noopener"
+               class="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm sm:text-base">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                View on GitHub
+            </a>
+            <a href="#quickstart"
+               class="btn-secondary flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm sm:text-base">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Quick Start
+            </a>
+        </div>
+
+        <!-- Hero UI Mockup -->
+        <div class="mt-14 w-full max-w-2xl reveal" style="transition-delay:0.4s">
+            <div class="flux-card rounded-2xl p-4 sm:p-8 relative overflow-hidden">
+                <!-- top glow -->
+                <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"></div>
+
+                <!-- server bar -->
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="4" y="4" width="16" height="6" rx="2" stroke-width="2"/>
+                            <rect x="4" y="14" width="16" height="6" rx="2" stroke-width="2"/>
+                            <circle cx="8" cy="7" r="1" fill="currentColor" stroke="none"/>
+                            <circle cx="8" cy="17" r="1" fill="currentColor" stroke="none"/>
+                        </svg>
+                        <span class="text-xs text-gray-500 mono uppercase tracking-wider">Server</span>
+                        <span class="text-sm text-white mono">my-homelab-01</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 mono">Latency</span>
+                        <span class="text-sm text-cyan-400 mono font-bold">4</span>
+                        <span class="text-xs text-gray-600 mono">ms</span>
+                    </div>
+                </div>
+
+                <!-- Two rings -->
+                <div class="grid grid-cols-2 gap-4 sm:gap-8">
+                    <!-- Download ring -->
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="flex items-center gap-2 self-start">
+                            <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center border border-cyan-500/30">
+                                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-white">Download</span>
+                        </div>
+                        <div class="ring-mockup w-28 h-28 sm:w-36 sm:h-36 ring-glow">
+                            <svg class="w-full h-full" viewBox="0 0 100 100">
+                                <circle class="fill-none" style="stroke:rgba(255,255,255,0.07);stroke-width:2.5;" cx="50" cy="50" r="44"/>
+                                <circle class="fill-none ring-fill-dl" style="stroke:#06b6d4;stroke-width:3;stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:276.5;" cx="50" cy="50" r="44"/>
+                            </svg>
+                            <div class="ring-label-mock">
+                                <span class="text-2xl sm:text-3xl font-light text-white leading-none count-anim">102</span>
+                                <span class="text-xs mono text-cyan-400 mt-0.5">Mbps</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 w-full text-xs mono">
+                            <div class="bg-white/5 rounded-lg p-2 border border-white/5 text-center">
+                                <div class="text-gray-500 text-[10px] uppercase mb-0.5">Elapsed</div>
+                                <div class="text-white">00:15</div>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-2 border border-white/5 text-center">
+                                <div class="text-gray-500 text-[10px] uppercase mb-0.5">Downloaded</div>
+                                <div class="text-cyan-400">66 MB</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload ring -->
+                    <div class="flex flex-col items-center gap-3">
+                        <div class="flex items-center gap-2 self-start">
+                            <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center border border-purple-500/30">
+                                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                </svg>
+                            </div>
+                            <span class="text-sm font-semibold text-white">Upload</span>
+                        </div>
+                        <div class="ring-mockup w-28 h-28 sm:w-36 sm:h-36">
+                            <svg class="w-full h-full" viewBox="0 0 100 100">
+                                <circle class="fill-none" style="stroke:rgba(255,255,255,0.07);stroke-width:2.5;" cx="50" cy="50" r="44"/>
+                                <circle class="fill-none ring-fill-ul" style="stroke:#a855f7;stroke-width:3;stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:276.5;" cx="50" cy="50" r="44"/>
+                            </svg>
+                            <div class="ring-label-mock">
+                                <span class="text-2xl sm:text-3xl font-light text-white leading-none count-anim" style="animation-delay:1.2s">45</span>
+                                <span class="text-xs mono text-purple-400 mt-0.5">Mbps</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 w-full text-xs mono">
+                            <div class="bg-white/5 rounded-lg p-2 border border-white/5 text-center">
+                                <div class="text-gray-500 text-[10px] uppercase mb-0.5">Elapsed</div>
+                                <div class="text-white">00:15</div>
+                            </div>
+                            <div class="bg-white/5 rounded-lg p-2 border border-white/5 text-center">
+                                <div class="text-gray-500 text-[10px] uppercase mb-0.5">Uploaded</div>
+                                <div class="text-purple-400">24 MB</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- bottom bar -->
+                <div class="mt-5 pt-4 border-t border-white/5">
+                    <div class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-white/10 flex items-center justify-center gap-2 text-sm">
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span class="text-green-400 font-semibold">Test Complete</span>
+                    </div>
+                </div>
+
+                <!-- bottom glow line -->
+                <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple-400/30 to-transparent"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Features ──────────────────────────────────────────────────── -->
+    <section id="features" class="relative z-10 py-20 px-4 sm:px-6">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12 reveal">
+                <span class="text-base mono text-cyan-400 uppercase tracking-widest">What it does</span>
+                <h2 class="text-3xl sm:text-4xl font-light text-white mt-2">Built for real infrastructure</h2>
+                <p class="mt-3 text-gray-400 max-w-xl mx-auto">Everything you need to accurately measure network performance between your client and your own server.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                <!-- Feature 1 -->
+                <div class="flux-card rounded-2xl p-5 reveal">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Time-Based Tests</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Both download and upload run for a fixed 15 s window — no fixed file size, no timeout on slow links.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.05s">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Real-Time Progress</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Live speed rings, Mbps readout, elapsed timer, and byte counter updating at the display's native frame rate.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.1s">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Latency Probes</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">5 sequential ping probes averaged before each test for an accurate RTT baseline.</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.15s">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Self-Hosted</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Test against your own VPS, home-lab, edge node, or bare-metal server — not a third-party CDN.</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.2s">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Docker-Ready</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Pre-built image on GHCR. One <code class="text-purple-300 text-xs">docker compose up</code> command to deploy with Gunicorn and Traefik labels.</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.25s">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Secure by Design</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Streaming chunks prevent memory exhaustion. Server-side upload ceiling stops runaway workers. Cache-control on all data endpoints.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ── How It Works ───────────────────────────────────────────────── -->
+    <section class="relative z-10 py-20 px-4 sm:px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12 reveal">
+                <span class="text-base mono text-cyan-400 uppercase tracking-widest">Under the hood</span>
+                <h2 class="text-3xl sm:text-4xl font-light text-white mt-2">How a test works</h2>
+            </div>
+
+            <div class="relative grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+                <!-- Step 1 -->
+                <div class="flux-card rounded-2xl p-5 text-center reveal">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-4 text-cyan-400 font-bold mono text-lg">1</div>
+                    <h3 class="text-base font-semibold text-white mb-2">Latency Probe</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Five <code class="text-cyan-300">/ping</code> requests are fired sequentially. The average RTT is displayed as your latency baseline.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flux-card rounded-2xl p-5 text-center reveal" style="transition-delay:0.1s">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-4 text-cyan-400 font-bold mono text-lg">2</div>
+                    <h3 class="text-base font-semibold text-white mb-2">Download (15 s)</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">The server streams 1 MB random chunks for exactly 15 s. The browser reads the stream and computes live Mbps via <code class="text-cyan-300">requestAnimationFrame</code>.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flux-card rounded-2xl p-5 text-center reveal" style="transition-delay:0.2s">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400 font-bold mono text-lg">3</div>
+                    <h3 class="text-base font-semibold text-white mb-2">Upload (15 s)</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">The browser generates random 64 KB chunks via <code class="text-purple-300">ReadableStream</code> for 15 s, then closes. The server counts received bytes and returns the result.</p>
+                </div>
+
+            </div>
+
+            <!-- Total time note -->
+            <div class="mt-6 flex justify-center reveal" style="transition-delay:0.3s">
+                <div class="status-pill text-sm mono px-4 py-2 rounded-full text-center">
+                    Full test completes in ~35 s regardless of connection speed
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Quick Start ────────────────────────────────────────────────── -->
+    <section id="quickstart" class="relative z-10 py-20 px-4 sm:px-6">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-12 reveal">
+                <span class="text-base mono text-cyan-400 uppercase tracking-widest">Deploy</span>
+                <h2 class="text-3xl sm:text-4xl font-light text-white mt-2">Up in seconds</h2>
+                <p class="mt-3 text-gray-400">No configuration files to edit. One command and you're testing.</p>
+            </div>
+
+            <!-- Tab: Docker Compose -->
+            <div class="reveal">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    <span class="text-sm font-semibold text-white">Option A — Docker Compose</span>
+                </div>
+                <div class="code-block mb-6">
+                    <div class="code-block-header">
+                        <span class="code-dot bg-red-500/70"></span>
+                        <span class="code-dot bg-yellow-500/70"></span>
+                        <span class="code-dot bg-green-500/70"></span>
+                        <span class="text-xs text-gray-500 mono ml-2">docker-compose.yml</span>
+                    </div>
+                    <pre class="p-4 text-xs sm:text-sm mono text-gray-300 overflow-x-auto leading-relaxed"><span class="text-purple-400">services</span><span class="text-gray-400">:</span>
+  <span class="text-cyan-400">speedtest</span><span class="text-gray-400">:</span>
+    <span class="text-purple-400">image</span><span class="text-gray-400">:</span> <span class="text-green-400">ghcr.io/siddheshgunjal/flux-test:latest</span>
+    <span class="text-purple-400">container_name</span><span class="text-gray-400">:</span> <span class="text-green-400">flux-test</span>
+    <span class="text-purple-400">ports</span><span class="text-gray-400">:</span>
+      <span class="text-gray-400">-</span> <span class="text-green-400">"4855:4855"</span>
+    <span class="text-purple-400">environment</span><span class="text-gray-400">:</span>
+      <span class="text-gray-400">-</span> <span class="text-green-400">SERVER_NAME=${HOSTNAME:-my-server}</span>
+    <span class="text-purple-400">restart</span><span class="text-gray-400">:</span> <span class="text-green-400">unless-stopped</span>
+    <span class="text-purple-400">deploy</span><span class="text-gray-400">:</span>
+        <span class="text-purple-400">resources</span><span class="text-gray-400">:</span>
+            <span class="text-purple-400">reservations</span><span class="text-gray-400">:</span>
+                <span class="text-purple-400">memory</span><span class="text-gray-400">:</span> <span class="text-green-400">256M</span>
+                <span class="text-purple-400">cpus</span><span class="text-gray-400">:</span> <span class="text-green-400">0.5</span>
+    <span class="text-purple-400">labels</span><span class="text-gray-400">:</span>
+        <span class="text-gray-400">-</span> <span class="text-green-400">"traefik.enable=true"</span>
+        <span class="text-gray-400">-</span> <span class="text-green-400">"traefik.http.routers.speedtest.rule=Host(`speedtest.example.com`)"</span>
+        <span class="text-gray-400">-</span> <span class="text-green-400">"traefik.http.routers.speedtest.entrypoints=websecure"</span>
+        <span class="text-gray-400">-</span> <span class="text-green-400">"traefik.http.routers.speedtest.tls.certresolver=letsencrypt"</span></pre>
+                </div>
+
+                <div class="code-block mb-8">
+                    <div class="code-block-header">
+                        <span class="code-dot bg-red-500/70"></span>
+                        <span class="code-dot bg-yellow-500/70"></span>
+                        <span class="code-dot bg-green-500/70"></span>
+                        <span class="text-xs text-gray-500 mono ml-2">terminal</span>
+                    </div>
+                    <pre class="p-4 text-xs sm:text-sm mono text-gray-300 leading-relaxed"><span class="text-gray-500"># start</span>
+<span class="text-cyan-400">docker compose up -d</span>
+
+<span class="text-gray-500"># stop</span>
+<span class="text-cyan-400">docker compose down</span></pre>
+                </div>
+            </div>
+
+            <!-- Tab: Docker run -->
+            <div class="reveal" style="transition-delay:0.1s">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                    <span class="text-sm font-semibold text-white">Option B — Docker run</span>
+                </div>
+                <div class="code-block mb-8">
+                    <div class="code-block-header">
+                        <span class="code-dot bg-red-500/70"></span>
+                        <span class="code-dot bg-yellow-500/70"></span>
+                        <span class="code-dot bg-green-500/70"></span>
+                        <span class="text-xs text-gray-500 mono ml-2">terminal</span>
+                    </div>
+                    <pre class="p-4 text-xs sm:text-sm mono text-gray-300 leading-relaxed"><span class="text-cyan-400">docker run</span> --rm \
+  -p 4855:4855 \
+  -e <span class="text-yellow-400">SERVER_NAME</span>=${HOSTNAME} \
+  <span class="text-green-400">ghcr.io/siddheshgunjal/flux-test:latest</span></pre>
+                </div>
+            </div>
+
+            <!-- Access hint -->
+            <div class="flux-card rounded-xl p-4 flex items-start gap-3 reveal" style="transition-delay:0.2s">
+                <svg class="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="text-sm text-gray-400">
+                    Access the UI at <code class="text-cyan-300 mono">http://your-server-ip:4855</code>. For HTTPS, place it behind a reverse proxy such as Traefik or Nginx with TLS termination.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Why FluxTest ───────────────────────────────────────────────── -->
+    <section class="relative z-10 py-20 px-4 sm:px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12 reveal">
+                <span class="text-base mono text-cyan-400 uppercase tracking-widest">Intended Use</span>
+                <h2 class="text-3xl sm:text-4xl font-light text-white mt-2">Not just another speed test</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flux-card rounded-2xl p-6 reveal">
+                    <h3 class="text-base font-semibold text-green-400 mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        What it's great for
+                    </h3>
+                    <ul class="space-y-2.5 text-sm text-gray-400">
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Validating client-to-server throughput on your home lab</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Testing VPS network performance after provisioning</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Diagnosing bandwidth bottlenecks on Cloudflare Tunnels</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Checking edge node connectivity in private clouds</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Verifying network after Docker/K8s deployments</li>
+                    </ul>
+                </div>
+                <div class="flux-card rounded-2xl p-6 reveal" style="transition-delay:0.1s">
+                    <h3 class="text-base font-semibold text-gray-500 mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        What it's not
+                    </h3>
+                    <ul class="space-y-2.5 text-sm text-gray-400">
+                        <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> A public ISP speed benchmark (no geographically distributed nodes)</li>
+                        <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> A replacement for Speedtest.net or fast.com</li>
+                        <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> Designed to be exposed publicly on the internet</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Tech Stack ─────────────────────────────────────────────────── -->
+    <section class="relative z-10 py-16 px-4 sm:px-6">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-8 reveal">
+                <span class="text-base mono text-cyan-400 uppercase tracking-widest">Built with</span>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 reveal">
+                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
+                    <span class="text-cyan-400">⬡</span> Flask
+                </span>
+                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
+                    <span class="text-green-400">⬡</span> Gunicorn
+                </span>
+                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
+                    <span class="text-blue-400">⬡</span> Docker
+                </span>
+                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
+                    <span class="text-yellow-400">⬡</span> Vanilla JS
+                </span>
+                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
+                    <span class="text-purple-400">⬡</span> Tailwind CSS
+                </span>
+                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
+                    <span class="text-orange-400">⬡</span> ReadableStream API
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── CTA Banner ─────────────────────────────────────────────────── -->
+    <section class="relative z-10 py-20 px-4 sm:px-6">
+        <div class="max-w-2xl mx-auto text-center reveal">
+            <div class="flux-card rounded-3xl p-8 sm:p-12 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5"></div>
+                <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"></div>
+                <div class="relative z-10">
+                    <img src="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_square.webp"
+                         alt="FluxTest" class="w-20 h-20 object-contain mx-auto mb-4">
+                    <h2 class="text-2xl sm:text-3xl font-light text-white mb-3">
+                        Ready to test your <span class="gradient-text font-semibold">own server?</span>
+                    </h2>
+                    <p class="text-gray-400 mb-6 text-sm sm:text-base">Deploy in one command. No accounts, no data sent to third parties.</p>
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <a href="https://github.com/siddheshgunjal/flux-test"
+                           target="_blank" rel="noopener"
+                           class="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm sm:text-base">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                            </svg>
+                            View on GitHub
+                        </a>
+                        <a href="https://github.com/siddheshgunjal/flux-test/issues"
+                           target="_blank" rel="noopener"
+                           class="btn-secondary flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm sm:text-base">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            Report an Issue
+                        </a>
+                    </div>
+                </div>
+                <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple-400/30 to-transparent"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────── -->
+    <footer class="relative z-10 pb-8 px-4 sm:px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="footer-line mb-6"></div>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs mono text-gray-600">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    <span class="text-gray-400">FluxTest v0.1.1</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="https://github.com/siddheshgunjal/flux-test" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">GitHub</a>
+                    <a href="https://github.com/siddheshgunjal/flux-test/issues" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">Issues</a>
+                    <a href="https://github.com/siddheshgunjal/flux-test/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">Contributing</a>
+                </div>
+                <span class="text-gray-500">
+                    Made by <a href="https://siddheshgunjal.github.io" target="_blank" class="text-cyan-400 hover:underline">Siddhesh Gunjal</a>
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
