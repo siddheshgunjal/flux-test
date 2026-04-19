@@ -6,9 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Constants matching app.py ─────────────────────────────────────────
-const DOWNLOAD_SIZE_MB = 50;
-const UPLOAD_SIZE_MB   = 25;
-const MAX_SPEED_MBPS   = 5000;
+const TEST_DURATION_SECONDS = 15;
+const MAX_SPEED_MBPS        = 5000;
 
 // ── Server info ───────────────────────────────────────────────────────
 async function fetchSystemInfo() {
@@ -26,8 +25,8 @@ async function fetchSystemInfo() {
         document.getElementById('server-health').textContent   = health.status || 'Unknown';
         document.getElementById('server-health').classList.remove('text-red-500');
         document.getElementById('server-health').classList.add('text-green-500');
-        document.getElementById('download-size').textContent = `${DOWNLOAD_SIZE_MB}MB Random Bytes Download`;
-        document.getElementById('upload-size').textContent   = `${UPLOAD_SIZE_MB}MB Random Bytes Upload`;
+        document.getElementById('download-size').textContent = `${TEST_DURATION_SECONDS}s Download Test`;
+        document.getElementById('upload-size').textContent   = `${TEST_DURATION_SECONDS}s Upload Test`;
         if (healthSt) {
             healthSt.classList.remove('bg-red-500');
             healthSt.classList.add('bg-green-500');
@@ -179,7 +178,6 @@ async function runDownloadTest() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const reader = response.body.getReader();
-        const totalBytes = DOWNLOAD_SIZE_MB * 1024 * 1024;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -187,20 +185,29 @@ async function runDownloadTest() {
             received += value.length;
 
             const elapsed = (performance.now() - startTime) / 1000;
+
+            // Client-side cutoff: once the test window expires, cancel the
+            // reader so buffered data in transit is not drained post-window.
+            if (elapsed >= TEST_DURATION_SECONDS) {
+                reader.cancel();
+                break;
+            }
+
             if (elapsed > 0.1) {
                 const speedMbps = (received * 8) / (elapsed * 1024 * 1024);
                 document.getElementById('dl-speed').textContent = speedMbps.toFixed(1);
                 document.getElementById('dl-bytes').textContent = (received / 1024 / 1024).toFixed(1) + ' MB';
-                setCircle('dl-circle', received / totalBytes);
+                setCircle('dl-circle', elapsed / TEST_DURATION_SECONDS);
             }
         }
 
-        const totalSec  = (performance.now() - startTime) / 1000;
-        const finalMbps = totalSec > 0 ? (received * 8) / (totalSec * 1024 * 1024) : 0;
+        // Speed uses the fixed test window as denominator, not total elapsed,
+        // so server response latency cannot artificially deflate the result.
+        const finalMbps = (received * 8) / (TEST_DURATION_SECONDS * 1024 * 1024);
 
         document.getElementById('dl-speed').textContent = finalMbps.toFixed(1);
         document.getElementById('dl-bytes').textContent = (received / 1024 / 1024).toFixed(1) + ' MB';
-        document.getElementById('dl-timer').textContent = fmtTime(totalSec);
+        document.getElementById('dl-timer').textContent = fmtTime(TEST_DURATION_SECONDS);
         setCircle('dl-circle', 1);
         setStatus('Download complete!', 'green');
         return finalMbps;
@@ -211,9 +218,8 @@ async function runDownloadTest() {
 }
 
 // ── Upload test ───────────────────────────────────────────────────────
-// Uses XMLHttpRequest instead of fetch because fetch() offers no
-// upload.onprogress events - bytes-sent is unknowable until the request
-// completes, causing the speed display to stay at 0 the whole time.
+// Uses fetch + ReadableStream so the upload runs for exactly TEST_DURATION_SECONDS,
+// then the stream closes and the server returns the final result.
 function runUploadTest() {
     resetCard('ul');
     setStatus('Testing upload…', 'purple');
@@ -223,94 +229,87 @@ function runUploadTest() {
         uploadDelayHint.style.opacity = '0';
     }
 
-    // Build buffer with crypto.getRandomValues (fast, ~ms for 50 MB)
-    const sizeBytes = UPLOAD_SIZE_MB * 1024 * 1024;
-    const buffer    = new Uint8Array(sizeBytes);
-    const CHUNK     = 65536;
-    for (let offset = 0; offset < sizeBytes; offset += CHUNK) {
-        crypto.getRandomValues(buffer.subarray(offset, Math.min(offset + CHUNK, sizeBytes)));
-    }
+    const startTime      = performance.now();
+    let sentBytes        = 0;
+    let streamClosed     = false;
+    let finalizingShown  = false;
+    let delayedHintTimer = null;
 
-    return new Promise((resolve, reject) => {
-        const xhr       = new XMLHttpRequest();
-        xhr.timeout = 120000; // Just in case, slightly above server-side timeout to allow finalization step
-        const startTime = performance.now();
-        let didFinalizeHint = false;
-        let delayedHintTimer = null;
-
-        const clearDelayedHint = () => {
-            if (delayedHintTimer) {
-                clearTimeout(delayedHintTimer);
-                delayedHintTimer = null;
-            }
-            if (uploadDelayHint) {
-                uploadDelayHint.style.opacity = '0';
-                uploadDelayHint.textContent = '';
-            }
-        };
-
-        // Timer - updates elapsed time every second
-        const timerHandle = setInterval(() => {
+    // ReadableStream generates 64 KB random chunks until TEST_DURATION_SECONDS elapses,
+    // then closes — the browser sends each chunk as it is produced.
+    const stream = new ReadableStream({
+        pull(controller) {
             const elapsed = (performance.now() - startTime) / 1000;
-            document.getElementById('ul-timer').textContent = fmtTime(elapsed);
-        }, 1000);
-
-        // Real-time progress from the browser's upload stream
-        xhr.upload.onprogress = (event) => {
-            if (!event.lengthComputable) return;
-            const elapsed  = (performance.now() - startTime) / 1000;
-            const pct      = event.loaded / event.total;
-            const speedMbps = elapsed > 0
-                ? (event.loaded * 8) / (elapsed * 1024 * 1024)
-                : 0;
-
-            document.getElementById('ul-speed').textContent =
-                speedMbps.toFixed(1);
-            document.getElementById('ul-bytes').textContent =
-                (event.loaded / 1024 / 1024).toFixed(1) + ' MB';
-            setCircle('ul-circle', pct);
-
-            // Over tunnels/proxies, bytes can reach the edge before origin reply arrives.
-            // Show an explicit finalizing phase instead of appearing stuck.
-            if (!didFinalizeHint && event.loaded >= event.total) {
-                didFinalizeHint = true;
-                setStatus('Upload complete. Finalizing on server…', 'orange');
-                delayedHintTimer = window.setTimeout(() => {
-                    if (uploadDelayHint) {
-                        uploadDelayHint.textContent = 'Network tunnel or proxy may add extra delay before confirmation.';
-                        uploadDelayHint.style.opacity = '1';
-                    }
-                }, 5000);
+            if (elapsed >= TEST_DURATION_SECONDS) {
+                streamClosed = true;
+                controller.close();
+                return;
             }
-        };
+            const chunk = new Uint8Array(65536);
+            crypto.getRandomValues(chunk);
+            sentBytes += chunk.byteLength;
+            controller.enqueue(chunk);
+        }
+    });
 
-        xhr.onload = () => {
-            clearInterval(timerHandle);
-            clearDelayedHint();
-            if (xhr.status >= 200 && xhr.status < 300) {
-                const totalSec  = (performance.now() - startTime) / 1000;
-                const finalMbps = totalSec > 0
-                    ? (sizeBytes * 8) / (totalSec * 1024 * 1024)
-                    : 0;
-                document.getElementById('ul-speed').textContent = finalMbps.toFixed(1);
-                document.getElementById('ul-bytes').textContent = UPLOAD_SIZE_MB + ' MB';
-                document.getElementById('ul-timer').textContent = fmtTime(totalSec);
-                setCircle('ul-circle', 1);
-                setStatus('Upload complete!', 'green');
-                resolve(finalMbps);
-            } else {
-                let msg = `HTTP ${xhr.status}`;
-                try { msg = JSON.parse(xhr.responseText).error || msg; } catch {}
-                reject(new Error(msg));
-            }
-        };
+    const clearDelayedHint = () => {
+        if (delayedHintTimer) { clearTimeout(delayedHintTimer); delayedHintTimer = null; }
+        if (uploadDelayHint)  { uploadDelayHint.style.opacity = '0'; uploadDelayHint.textContent = ''; }
+    };
 
-        xhr.onerror   = () => { clearInterval(timerHandle); clearDelayedHint(); reject(new Error('Upload request failed')); };
-        xhr.ontimeout = () => { clearInterval(timerHandle); clearDelayedHint(); reject(new Error('Upload timed out')); };
+    // Update UI at 200 ms intervals; also triggers the finalizing hint once the stream closes.
+    const timerHandle = setInterval(() => {
+        const elapsed = (performance.now() - startTime) / 1000;
+        document.getElementById('ul-timer').textContent = fmtTime(elapsed);
 
-        xhr.open('POST', '/upload');
-        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-        xhr.send(buffer);
+        // Once the stream has closed (15 s elapsed), sentBytes is frozen.
+        // Stop recalculating speed so it doesn't deflate as wait time grows.
+        if (!streamClosed) {
+            const speedMbps = elapsed > 0 ? (sentBytes * 8) / (elapsed * 1024 * 1024) : 0;
+            document.getElementById('ul-speed').textContent = speedMbps.toFixed(1);
+            document.getElementById('ul-bytes').textContent = (sentBytes / 1024 / 1024).toFixed(1) + ' MB';
+            setCircle('ul-circle', Math.min(elapsed / TEST_DURATION_SECONDS, 1));
+        }
+
+        // Over tunnels/proxies, bytes can reach the edge before the origin reply arrives.
+        // Show an explicit finalizing phase so the UI doesn’t appear stuck.
+        if (streamClosed && !finalizingShown) {
+            finalizingShown = true;
+            setStatus('Upload complete. Finalizing on server…', 'orange');
+            delayedHintTimer = window.setTimeout(() => {
+                if (uploadDelayHint) {
+                    uploadDelayHint.textContent = 'Network tunnel or proxy may add extra delay before confirmation.';
+                    uploadDelayHint.style.opacity = '1';
+                }
+            }, 5000);
+        }
+    }, 200);
+
+    return fetch('/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: stream,
+        duplex: 'half',   // Required by Chrome 105+ for streaming request bodies
+        cache: 'no-store',
+    }).then(res => {
+        clearInterval(timerHandle);
+        clearDelayedHint();
+        if (!res.ok) {
+            return res.json().then(j => { throw new Error(j.error || `HTTP ${res.status}`); });
+        }
+        // Speed uses the fixed test window as denominator so the server
+        // response wait time cannot artificially deflate the result.
+        const finalMbps = (sentBytes * 8) / (TEST_DURATION_SECONDS * 1024 * 1024);
+        document.getElementById('ul-speed').textContent = finalMbps.toFixed(1);
+        document.getElementById('ul-bytes').textContent = (sentBytes / 1024 / 1024).toFixed(1) + ' MB';
+        document.getElementById('ul-timer').textContent = fmtTime(TEST_DURATION_SECONDS);
+        setCircle('ul-circle', 1);
+        setStatus('Upload complete!', 'green');
+        return finalMbps;
+    }).catch(err => {
+        clearInterval(timerHandle);
+        clearDelayedHint();
+        throw err;
     });
 }
 
