@@ -29,7 +29,8 @@ jobs:
         run: uv sync --no-dev
 
       - name: Verify app imports cleanly
-        run: uv run python -c "import app; print('app.py: OK')"
+        run: |
+          uv run python -c "import app; print('app.py: OK')"
 
   # ── 2. Node / CSS asset build ─────────────────────────────────────────
   assets-build:
