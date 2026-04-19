@@ -164,14 +164,31 @@ async function runDownloadTest() {
     setStatus('Testing download…', 'cyan');
 
     const startTime = performance.now();
-    let received = 0;
-    let timerHandle;
+    let received    = 0;         // written only by the read loop
+    let testDone    = false;     // set true when the 15 s window closes
+    let rafHandle   = null;
 
-    // Update timer every second
-    timerHandle = setInterval(() => {
-        const elapsed = (performance.now() - startTime) / 1000;
+    // ── rAF render loop ───────────────────────────────────────────────
+    // Owns ALL DOM writes for speed/bytes/ring/timer.  Runs at the
+    // display's native frame rate so the ring animates smoothly even on
+    // high-refresh screens.  The read loop is pure data accumulation and
+    // never touches the DOM directly.
+    function rafLoop() {
+        const elapsed = Math.min((performance.now() - startTime) / 1000, TEST_DURATION_SECONDS);
         document.getElementById('dl-timer').textContent = fmtTime(elapsed);
-    }, 1000);
+
+        if (!testDone && elapsed > 0.1) {
+            const speedMbps = (received * 8) / (elapsed * 1024 * 1024);
+            document.getElementById('dl-speed').textContent = speedMbps.toFixed(1);
+            document.getElementById('dl-bytes').textContent = (received / 1024 / 1024).toFixed(1) + ' MB';
+            setCircle('dl-circle', elapsed / TEST_DURATION_SECONDS);
+        }
+
+        if (!testDone) {
+            rafHandle = requestAnimationFrame(rafLoop);
+        }
+    }
+    rafHandle = requestAnimationFrame(rafLoop);
 
     try {
         const response = await fetch('/download', { cache: 'no-store' });
@@ -179,26 +196,25 @@ async function runDownloadTest() {
 
         const reader = response.body.getReader();
 
+        // Pure accumulation loop — no DOM writes here.
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             received += value.length;
 
-            const elapsed = (performance.now() - startTime) / 1000;
-
-            // Client-side cutoff: once the test window expires, cancel the
-            // reader so buffered data in transit is not drained post-window.
-            if (elapsed >= TEST_DURATION_SECONDS) {
+            // Client-side cutoff: cancel any buffered data once the window expires.
+            if ((performance.now() - startTime) / 1000 >= TEST_DURATION_SECONDS) {
                 reader.cancel();
                 break;
             }
+        }
 
-            if (elapsed > 0.1) {
-                const speedMbps = (received * 8) / (elapsed * 1024 * 1024);
-                document.getElementById('dl-speed').textContent = speedMbps.toFixed(1);
-                document.getElementById('dl-bytes').textContent = (received / 1024 / 1024).toFixed(1) + ' MB';
-                setCircle('dl-circle', elapsed / TEST_DURATION_SECONDS);
-            }
+        // Freeze the rAF loop before writing final values so the last rAF
+        // frame and the synchronous final write cannot race.
+        testDone = true;
+        if (rafHandle !== null) {
+            cancelAnimationFrame(rafHandle);
+            rafHandle = null;
         }
 
         // Speed uses the fixed test window as denominator, not total elapsed,
@@ -212,8 +228,10 @@ async function runDownloadTest() {
         setStatus('Download complete!', 'green');
         return finalMbps;
 
-    } finally {
-        clearInterval(timerHandle);
+    } catch (err) {
+        testDone = true;
+        if (rafHandle !== null) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+        throw err;
     }
 }
 
