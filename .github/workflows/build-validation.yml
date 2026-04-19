@@ -1,0 +1,75 @@
+name: Build Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ── 1. Python / uv build ──────────────────────────────────────────────
+  python-build:
+    name: Python build (uv)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: pyproject.toml
+
+      - name: Install dependencies
+        run: uv sync --no-dev
+
+      - name: Verify app imports cleanly
+        run: uv run python -c "import app; print('app.py: OK')"
+
+  # ── 2. Node / CSS asset build ─────────────────────────────────────────
+  assets-build:
+    name: CSS assets build (npm)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build CSS assets
+        run: npm run build
+
+  # ── 3. Docker image build ─────────────────────────────────────────────
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: [python-build, assets-build]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: flux-test:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
