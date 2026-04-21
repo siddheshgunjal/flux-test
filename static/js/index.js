@@ -346,19 +346,27 @@ function setupTestLogic() {
             if (card) card.classList.remove('complete-glow');
         });
 
-        let dlSpeed = 0, ulSpeed = 0, latencyMs = null;
+        // Hide diagnosis panel at the start of each new test
+        const diagPanel = document.getElementById('diagnosis-panel');
+        if (diagPanel) { diagPanel.style.display = 'none'; diagPanel.style.opacity = '0'; }
+
+        let dlSpeed = 0, ulSpeed = 0, latencyMs = null, jitterMs = null;
 
         try {
             // Always measure latency first
             setStatus('Measuring latency…', 'cyan');
-            latencyMs = await measureLatency();
-            document.getElementById('ping-value').textContent = latencyMs.toFixed(0);
+            const latResult = await measureLatency();
+            latencyMs = latResult.avg;
+            jitterMs  = latResult.jitter;
+            document.getElementById('ping-value').textContent   = latencyMs.toFixed(0);
+            document.getElementById('jitter-value').textContent = jitterMs.toFixed(1);
 
             if (!ulOnly) dlSpeed = await runDownloadTest();
             if (!dlOnly) ulSpeed = await runUploadTest();
 
-            setStatus('Test complete', 'green');
+            setStatus('Test Complete 👇🏼', 'green');
             triggerCompletionEffect();
+            showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed);
 
         } catch (e) {
             setStatus(`Error: ${e.message}`, 'red');
@@ -370,4 +378,165 @@ function setupTestLogic() {
     }
 
     document.getElementById('start-all-btn').addEventListener('click', () => run(false, false));
+}
+
+// ── Network score ─────────────────────────────────────────────────────
+function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed) {
+    // Each metric contributes up to 25 points → max 100
+    let latPts, jitPts, dlPts, ulPts;
+
+    if (latencyMs < 20)       latPts = 25;
+    else if (latencyMs < 60)  latPts = 20;
+    else if (latencyMs < 150) latPts = 10;
+    else                       latPts = 3;
+
+    if (jitterMs < 5)         jitPts = 25;
+    else if (jitterMs < 20)   jitPts = 15;
+    else                       jitPts = 3;
+
+    if (dlSpeed >= 100)       dlPts = 25;
+    else if (dlSpeed >= 25)   dlPts = 20;
+    else if (dlSpeed >= 10)   dlPts = 12;
+    else                       dlPts = 3;
+
+    if (ulSpeed >= 20)        ulPts = 25;
+    else if (ulSpeed >= 5)    ulPts = 15;
+    else                       ulPts = 3;
+
+    const score = latPts + jitPts + dlPts + ulPts;
+
+    let grade, label, color;
+    if (score >= 90)      { grade = 'A'; label = ' - Exceptional';  color = '#22c55e'; }
+    else if (score >= 75) { grade = 'B'; label = ' - Good';         color = '#4ade80'; }
+    else if (score >= 55) { grade = 'C'; label = ' - Fair';         color = '#f9ad16'; }
+    else if (score >= 35) { grade = 'D'; label = ' - Poor';         color = '#f97316'; }
+    else                   { grade = 'F'; label = ' - Critical';     color = '#ef4444'; }
+
+    return { score, grade, label, color };
+}
+
+// ── Diagnosis / recommendations ───────────────────────────────────────
+function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed) {
+    const panel     = document.getElementById('diagnosis-panel');
+    const container = document.getElementById('diagnosis-items');
+    if (!panel || !container) return;
+
+    // Populate score banner
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed);
+    const scoreNum   = document.getElementById('score-number');
+    const scoreGrade = document.getElementById('score-grade');
+    const scoreLabel = document.getElementById('score-label');
+    const scoreArc   = document.getElementById('score-arc');
+    if (scoreNum)   scoreNum.textContent = score;
+    if (scoreGrade) { scoreGrade.textContent = grade; scoreGrade.style.color = color; }
+    if (scoreLabel) { scoreLabel.textContent = label; scoreLabel.style.color = color; }
+    if (scoreArc)   { scoreArc.style.stroke = color; scoreArc.style.strokeDashoffset = String(263.9 * (1 - score / 100)); }
+
+    container.innerHTML = '';
+    const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed);
+
+    items.forEach((item, idx) => {
+        const el = document.createElement('div');
+        const isLast = idx === items.length - 1;
+        el.className = 'flex items-start gap-3 py-2.5 sm:py-3' + (isLast ? '' : ' border-b border-white/5');
+        el.innerHTML = `
+            <div class="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-2xl font-bold" style="background:${item.bgColor}; color:${item.color}">${item.icon}</div>
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-0.5">
+                    <span class="text-xs sm:text-sm font-mono uppercase tracking-wider text-gray-400">${item.metric}</span>
+                    <span class="text-xs sm:text-sm font-semibold" style="color:${item.color}">${item.verdict}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-gray-400 leading-relaxed">${item.recommendation}</p>
+            </div>`;
+        container.appendChild(el);
+    });
+
+    panel.style.display = '';
+    // Trigger animation on next frame
+    requestAnimationFrame(() => {
+        panel.style.opacity  = '1';
+        panel.style.transform = 'translateY(0)';
+    });
+}
+
+function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed) {
+    const items = [];
+
+    // ── Latency ───────────────────────────────────────────────────────
+    let latColor, latVerdict, latRec;
+    if (latencyMs < 30) {
+        latColor = '#22c55e';
+        latVerdict = `Excellent — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'Exceptional TTFB. Clients will experience near-instant server responses — ideal for latency-sensitive APIs, real-time dashboards, and WebSocket connections.';
+    } else if (latencyMs < 90) {
+        latColor = '#22c55e';
+        latVerdict = `Good — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'Good response latency. Suitable for most web applications; API calls and page loads will feel responsive to end users across regions.';
+    } else if (latencyMs < 180) {
+        latColor = '#f9ad16';
+        latVerdict = `Fair — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'Moderate latency may degrade perceived performance. Consider deploying a CDN for streamable assets to reduce round-trip times.';
+    } else {
+        latColor = '#ef4444';
+        latVerdict = `High — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'High latency will noticeably increase TTFB and hurt user experience. Investigate network path, hosting region, or consider edge/CDN deployment to bring content closer to users.';
+    }
+    items.push({ metric: 'Latency', icon: '⏱', bgColor: 'rgba(34,197,94,0.12)', color: latColor, verdict: latVerdict, recommendation: latRec });
+
+    // ── Jitter ────────────────────────────────────────────────────────
+    let jitColor, jitVerdict, jitRec;
+    if (jitterMs < 5) {
+        jitColor = '#22c55e';
+        jitVerdict = `Stable — ${jitterMs.toFixed(1)} ms`;
+        jitRec = 'Highly consistent response times. Reliable for WebSocket connections, Server-Sent Events, real-time collaboration features, and microservice-to-microservice calls.';
+    } else if (jitterMs < 20) {
+        jitColor = '#f9ad16';
+        jitVerdict = `Moderate — ${jitterMs.toFixed(1)} ms`;
+        jitRec = 'Some timing variability. May cause occasional retries in chained service calls. Monitor p95/p99 latency in production and review upstream provider SLAs.';
+    } else {
+        jitColor = '#ef4444';
+        jitVerdict = `High — ${jitterMs.toFixed(1)} ms`;
+        jitRec = 'Inconsistent response times will trigger client-side timeouts and degrade real-time features. Investigate NIC configuration, network contention, or switch to a more stable hosting provider.';
+    }
+    items.push({ metric: 'Jitter', icon: '〰', bgColor: 'rgba(168,85,247,0.12)', color: jitColor, verdict: jitVerdict, recommendation: jitRec });
+
+    // ── Download (ingress) ────────────────────────────────────────────
+    let dlColor, dlVerdict, dlRec;
+    if (dlSpeed >= 100) {
+        dlColor = '#22c55e';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Strong ingress bandwidth. Handles large file uploads, webhook payloads, and database sync traffic from many concurrent clients without link saturation.';
+    } else if (dlSpeed >= 25) {
+        dlColor = '#22c55e';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Adequate ingress for most web workloads. Monitor utilisation during traffic spikes to ensure upload-heavy endpoints do not saturate the link.';
+    } else if (dlSpeed >= 10) {
+        dlColor = '#f9ad16';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Limited ingress may become a bottleneck when clients send large request bodies or files concurrently. Consider rate limiting uploads or routing them through a dedicated ingress path.';
+    } else {
+        dlColor = '#ef4444';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Insufficient ingress bandwidth for production use with concurrent uploads or large API payloads. Upgrade your hosting plan or network connection immediately.';
+    }
+    items.push({ metric: 'Download', icon: '↓', bgColor: 'rgba(6,182,212,0.12)', color: dlColor, verdict: dlVerdict, recommendation: dlRec });
+
+    // ── Upload (egress) ───────────────────────────────────────────────
+    let ulColor, ulVerdict, ulRec;
+    if (ulSpeed >= 20) {
+        ulColor = '#22c55e';
+        ulVerdict = `${ulSpeed.toFixed(1)} Mbps`;
+        ulRec = 'Good egress capacity. Sufficient for serving concurrent users with web assets, API responses, and media. Monitor utilisation as traffic scales and set bandwidth alerts.';
+    } else if (ulSpeed >= 5) {
+        ulColor = '#f9ad16';
+        ulVerdict = `${ulSpeed.toFixed(1)} Mbps`;
+        ulRec = 'Moderate egress. Adequate for low-to-medium traffic volumes. Under heavy concurrent load or with large asset delivery, this link may saturate — offload static content to a CDN.';
+    } else {
+        ulColor = '#ef4444';
+        ulVerdict = `${ulSpeed.toFixed(1)} Mbps`;
+        ulRec = 'Critically low egress bandwidth for a production server. Concurrent users will experience slow page loads and elevated response times. Upgrade your plan or offload assets to a CDN immediately.';
+    }
+    items.push({ metric: 'Upload', icon: '↑', bgColor: 'rgba(168,85,247,0.12)', color: ulColor, verdict: ulVerdict, recommendation: ulRec });
+
+    return items;
 }
