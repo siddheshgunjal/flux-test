@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FluxTest - Network Speed Test</title>
+    <title>FluxTest - Network Diagnosis</title>
     <link rel="icon" type="image/webp" href="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_square.webp">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='lib/css/index.css') }}">
@@ -211,6 +211,22 @@
         <div id="diagnosis-panel" class="w-full max-w-3xl mx-auto mt-3 sm:mt-6 relative z-10" style="display:none; opacity:0; transform:translateY(8px); transition:opacity 0.4s ease, transform 0.4s ease;">
             <div class="flux-card rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
 
+                <!-- Card header -->
+                <div class="flex items-center justify-between mb-3 sm:mb-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-7 h-7 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <h3 class="text-base sm:text-lg font-semibold text-white tracking-wide">Connection Analysis</h3>
+                    </div>
+                    <button id="download-result-btn" onclick="downloadResultCard()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-cyan-400/40 hover:bg-white/10 transition-all duration-200 text-gray-400 hover:text-white text-xs font-mono">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span>Save Report</span>
+                    </button>
+                </div>
+
                 <!-- Score Banner -->
                 <div class="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-white/10">
                     <!-- Arc ring -->
@@ -239,12 +255,6 @@
                 </div>
 
                 <!-- Per-metric rows -->
-                <div class="flex justify-center items-center gap-2 mb-3 sm:mb-4">
-                    <svg class="w-7 h-7 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    <h3 class="text-base sm:text-lg font-semibold text-white tracking-wide">Connection Analysis</h3>
-                </div>
                 <div id="diagnosis-items" class="space-y-0"></div>
             </div>
         </div>

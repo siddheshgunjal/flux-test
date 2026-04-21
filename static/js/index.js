@@ -432,6 +432,15 @@ function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed) {
     if (scoreLabel) { scoreLabel.textContent = label; scoreLabel.style.color = color; }
     if (scoreArc)   { scoreArc.style.stroke = color; scoreArc.style.strokeDashoffset = String(263.9 * (1 - score / 100)); }
 
+    // Store raw values for PNG download
+    const serverName = document.getElementById('server-name')?.textContent || 'Server';
+    panel.dataset.latency  = latencyMs;
+    panel.dataset.jitter   = jitterMs;
+    panel.dataset.dlSpeed  = dlSpeed;
+    panel.dataset.ulSpeed  = ulSpeed;
+    panel.dataset.server   = serverName;
+    panel.dataset.ready    = '1';
+
     container.innerHTML = '';
     const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed);
 
@@ -457,6 +466,268 @@ function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed) {
         panel.style.opacity  = '1';
         panel.style.transform = 'translateY(0)';
     });
+}
+
+// ── Shareable result card (Canvas PNG) ───────────────────────────────
+function _wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+    for (const word of words) {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+        } else {
+            line = test;
+        }
+    }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+    return lines.length;
+}
+
+function _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+function downloadResultCard() {
+    const panel = document.getElementById('diagnosis-panel');
+    if (!panel || !panel.dataset.ready) return;
+
+    const latencyMs  = parseFloat(panel.dataset.latency)  || 0;
+    const jitterMs   = parseFloat(panel.dataset.jitter)   || 0;
+    const dlSpeed    = parseFloat(panel.dataset.dlSpeed)  || 0;
+    const ulSpeed    = parseFloat(panel.dataset.ulSpeed)  || 0;
+    const serverName = panel.dataset.server || 'Server';
+
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed);
+    const gradeLabel = label.replace(/^ - /, '');
+    const diagItems  = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed);
+
+    // Single-column card matching the Diagnosis panel layout
+    const W = 640, H = 700, DPR = 2;
+    const PAD = 24;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+
+    const SF = '-apple-system,BlinkMacSystemFont,Inter,sans-serif';
+    const MF = '"JetBrains Mono","Courier New",monospace';
+
+    // ── Background ───────────────────────────────────────────────────
+    ctx.fillStyle = '#0d0d0f';
+    ctx.fillRect(0, 0, W, H);
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0,   'rgba(6,182,212,0.06)');
+    bgGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+    bgGrad.addColorStop(1,   'rgba(168,85,247,0.06)');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Card border
+    ctx.save();
+    _roundRect(ctx, 0.5, 0.5, W - 1, H - 1, 16);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    // Top accent line (cyan → purple gradient)
+    const topGrad = ctx.createLinearGradient(0, 0, W, 0);
+    topGrad.addColorStop(0,   'transparent');
+    topGrad.addColorStop(0.4, 'rgba(6,182,212,0.7)');
+    topGrad.addColorStop(0.6, 'rgba(168,85,247,0.5)');
+    topGrad.addColorStop(1,   'transparent');
+    ctx.strokeStyle = topGrad;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD, 1); ctx.lineTo(W - PAD, 1);
+    ctx.stroke();
+
+    // ── Header — FluxTest branding ────────────────────────────────────
+    ctx.font = `300 26px ${SF}`;
+    ctx.fillStyle = '#ffffff';
+    const fluxW = ctx.measureText('Flux').width;
+    ctx.fillText('Flux', PAD, 38);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillText('Test', PAD + fluxW, 38);
+
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = 'rgba(188, 188, 188, 0.85)';
+    ctx.fillText('Network Diagnosis Report', PAD, 53);
+
+    ctx.textAlign = 'right';
+    ctx.font = `400 12px ${MF}`;
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillText(serverName, W - PAD, 38);
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = '#6e737a';
+    ctx.fillText(new Date().toLocaleString(), W - PAD, 53);
+    ctx.textAlign = 'left';
+
+    // Header separator
+    const HEADER_BOTTOM = 62;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, HEADER_BOTTOM); ctx.lineTo(W - PAD, HEADER_BOTTOM);
+    ctx.stroke();
+
+    // ── Score Banner — matches panel score section ────────────────────
+    const RING_R = 48, RING_CX = W / 2;
+    const RING_CY = HEADER_BOTTOM + 16 + RING_R;   // 126
+
+    // Background ring track
+    ctx.beginPath();
+    ctx.arc(RING_CX, RING_CY, RING_R, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 7;
+    ctx.stroke();
+
+    // Score arc
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(RING_CX, RING_CY, RING_R, -Math.PI / 2, -Math.PI / 2 + (score / 100) * Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // Score number + /100 inside ring
+    ctx.textAlign = 'center';
+    ctx.font = `300 28px ${SF}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(score, RING_CX, RING_CY + 9);
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = '#848689';
+    ctx.fillText('/100', RING_CX, RING_CY + 23);
+
+    // Grade letter + label — flex items-center justify-center (matches panel)
+    const ringBottom = RING_CY + RING_R;     // 174
+    const gradeBaseY = ringBottom + 40;      // 204
+
+    ctx.font = `bold 32px ${SF}`;
+    const gradeW = ctx.measureText(grade).width;
+    ctx.font = `500 14px ${SF}`;
+    const labelW  = ctx.measureText(gradeLabel).width;
+    const rowW    = gradeW + 10 + labelW;
+    const rowX    = Math.round((W - rowW) / 2);
+
+    ctx.textAlign = 'left';
+    ctx.font = `bold 32px ${SF}`;
+    ctx.fillStyle = color;
+    ctx.fillText(grade, rowX, gradeBaseY);
+
+    ctx.font = `500 14px ${SF}`;
+    ctx.fillStyle = color;
+    ctx.fillText(gradeLabel, rowX + gradeW + 10, gradeBaseY - 5);   // slight raise to optically align
+
+    // "OVERALL SCORE" sub-label
+    ctx.textAlign = 'center';
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = 'rgba(172, 175, 181, 0.75)';
+    ctx.fillText('OVERALL SCORE', RING_CX, gradeBaseY + 20);
+
+    // Score section separator (matches border-b border-white/10)
+    const SCORE_BOTTOM = gradeBaseY + 36;   // 240
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, SCORE_BOTTOM); ctx.lineTo(W - PAD, SCORE_BOTTOM);
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+
+    // ── Per-metric rows — matches panel diagnosis-items ───────────────
+    const ROW_START_Y = SCORE_BOTTOM + 8;       // 248
+    const FOOTER_SEP  = H - 44;                 // 656
+    const ROW_H       = (FOOTER_SEP - ROW_START_Y) / diagItems.length;  // ~102
+
+    const ICON_SZ   = 40;
+    const ROW_PAD_T = 12;   // top padding per row (matches py-3)
+    const REC_MAX_W = W - PAD - ICON_SZ - 14 - PAD;   // 538
+
+    diagItems.forEach((m, i) => {
+        const rowY     = ROW_START_Y + i * ROW_H;
+        const iconTopY = rowY + ROW_PAD_T;   // items-start: icon aligns to text top
+        const tx       = PAD + ICON_SZ + 14;
+
+        // Icon box (matches w-10 h-10 rounded-lg)
+        ctx.save();
+        _roundRect(ctx, PAD, iconTopY, ICON_SZ, ICON_SZ, 8);
+        ctx.fillStyle = m.bgColor;
+        ctx.fill();
+        ctx.restore();
+
+        ctx.font = '30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = m.color;
+        ctx.fillText(m.icon, PAD + ICON_SZ / 2, iconTopY + ICON_SZ / 2 + 10);
+        ctx.textAlign = 'left';
+
+        // Metric name + verdict on same baseline (matches flex items-baseline gap-x-2)
+        ctx.font = `400 14px ${MF}`;
+        ctx.fillStyle = 'rgba(180, 180, 180, 0.9)';
+        const metricW = ctx.measureText(m.metric.toUpperCase()).width;
+        ctx.fillText(m.metric.toUpperCase(), tx, iconTopY + 13);
+
+        ctx.font = `600 14px ${SF}`;
+        ctx.fillStyle = m.color;
+        ctx.fillText(m.verdict, tx + metricW + 8, iconTopY + 13);
+
+        // Recommendation text (matches text-xs text-gray-400 leading-relaxed)
+        ctx.font = `400 12px ${SF}`;
+        ctx.fillStyle = 'rgba(156,163,175,0.78)';
+        _wrapText(ctx, m.recommendation, tx, iconTopY + 29, REC_MAX_W, 14);
+
+        // Row separator (matches border-b border-white/5)
+        if (i < diagItems.length - 1) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(PAD, rowY + ROW_H); ctx.lineTo(W - PAD, rowY + ROW_H);
+            ctx.stroke();
+        }
+    });
+
+    // ── Footer ───────────────────────────────────────────────────────
+    const ftGrad = ctx.createLinearGradient(0, 0, W, 0);
+    ftGrad.addColorStop(0,   'transparent');
+    ftGrad.addColorStop(0.5, 'rgba(168,85,247,0.25)');
+    ftGrad.addColorStop(1,   'transparent');
+    ctx.strokeStyle = ftGrad;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, FOOTER_SEP + 8); ctx.lineTo(W - PAD, FOOTER_SEP + 8);
+    ctx.stroke();
+
+    ctx.font = `400 9px ${MF}`;
+    ctx.fillStyle = '#374151';
+    ctx.fillText('github.com/siddheshgunjal/flux-test', PAD, H - 13);
+    ctx.textAlign = 'right';
+    ctx.fillText('FluxTest · Self-Hosted Network Diagnosis', W - PAD, H - 13);
+    ctx.textAlign = 'left';
+
+    // ── Trigger download ─────────────────────────────────────────────
+    const link = document.createElement('a');
+    link.download = `fluxtest-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
 }
 
 function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed) {
