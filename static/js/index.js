@@ -155,7 +155,10 @@ async function measureLatency(count = 5) {
         await res.json();
         times.push(performance.now() - t0);
     }
-    return times.reduce((a, b) => a + b, 0) / times.length;
+    const avg = times.reduce((a, b) => a + b, 0) / times.length;
+    const variance = times.reduce((sum, t) => sum + (t - avg) ** 2, 0) / times.length;
+    const jitter = Math.sqrt(variance);
+    return { avg, jitter };
 }
 
 // ── Download test ─────────────────────────────────────────────────────
