@@ -190,6 +190,48 @@
             <p id="upload-delay-hint" style="margin-top:0.5rem; min-height:1rem; text-align:center; font-size:0.75rem; color:#f9ad16; opacity:0; transition:opacity 0.25s ease;"></p>
         </div>
 
+        <!-- Diagnosis Panel -->
+        <div id="diagnosis-panel" class="w-full max-w-3xl mx-auto mt-3 sm:mt-6 relative z-10" style="display:none; opacity:0; transform:translateY(8px); transition:opacity 0.4s ease, transform 0.4s ease;">
+            <div class="flux-card rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
+
+                <!-- Score Banner -->
+                <div class="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-white/10">
+                    <!-- Arc ring -->
+                    <div class="shrink-0 relative w-24 h-24 sm:w-28 sm:h-28">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+                            <circle id="score-arc" cx="50" cy="50" r="42" fill="none"
+                                stroke-linecap="round"
+                                stroke-dasharray="263.9"
+                                stroke-dashoffset="263.9"
+                                style="stroke:#22c55e; stroke-width:7; transition:stroke-dashoffset 0.8s ease-out, stroke 0.4s ease;"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="score-number" class="text-2xl sm:text-3xl font-light tracking-tighter leading-none text-white">--</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono text-gray-500">/100</span>
+                        </div>
+                    </div>
+                    <!-- Grade + label -->
+                    <div class="text-center">
+                        <div class="flex items-center justify-center gap-2 mb-0.5 sm:mb-1">
+                            <span id="score-grade" class="text-3xl sm:text-4xl font-bold leading-none" style="color:#22c55e;">--</span>
+                            <p id="score-label" class="text-sm sm:text-base text-gray-400 font-mono">Analyzing…</p>
+                        </div>
+                        <span class="text-xs sm:text-sm font-mono text-gray-400 uppercase tracking-wider">Overall Score</span>
+                    </div>
+                </div>
+
+                <!-- Per-metric rows -->
+                <div class="flex justify-center items-center gap-2 mb-3 sm:mb-4">
+                    <svg class="w-7 h-7 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <h3 class="text-base sm:text-lg font-semibold text-white tracking-wide">Connection Analysis</h3>
+                </div>
+                <div id="diagnosis-items" class="space-y-0"></div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Status Bar -->
