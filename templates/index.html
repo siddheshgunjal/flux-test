@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FluxTest - Network Speed Test</title>
+    <title>FluxTest - Network Diagnosis</title>
     <link rel="icon" type="image/webp" href="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_square.webp">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='lib/css/index.css') }}">
@@ -44,7 +44,20 @@
                         <span class="text-[14px] sm:text-xs text-gray-500 font-mono uppercase tracking-wider">Server</span>
                         <span id="server-name" class="text-[14px] sm:text-sm text-white font-mono truncate">--</span>
                     </div>
-                    <div class="flex items-center justify-end gap-1.5 sm:gap-2">
+                    <div class="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-width="2" stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <path stroke-width="2" d="M10 10.105a1.105 1.105 0 0 1 1.105 -1.105h1.79a1.105 1.105 0 0 1 1.105 1.105v9.79a1.105 1.105 0 0 1 -1.105 1.105h-1.79a1.105 1.105 0 0 1 -1.105 -1.105l0 -9.79" />
+                            <path stroke-width="2" d="M17 4.105a1.105 1.105 0 0 1 1.105 -1.105h1.79a1.105 1.105 0 0 1 1.105 1.105v15.79a1.105 1.105 0 0 1 -1.105 1.105h-1.79a1.105 1.105 0 0 1 -1.105 -1.105l0 -15.79" />
+                            <path stroke-width="2" d="M3 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                        </svg>
+                        <span class="text-[14px] sm:text-xs text-gray-500 font-mono uppercase tracking-wider">Status</span>
+                        <span id="server-indicator" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span id="server-health" class="text-[14px] sm:text-sm text-gray-500 font-mono">Checking...</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-2 sm:pt-4">
+                    <div class="flex items-center justify-start gap-1.5 sm:gap-2">
                         <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
@@ -52,10 +65,22 @@
                         <span id="ping-value" class="text-[14px] sm:text-sm font-mono text-cyan-400">--</span>
                         <span class="text-[14px] sm:text-xs text-gray-600 font-mono">ms</span>
                     </div>
-                </div>
-                <div class="flex items-center justify-center gap-1.5 sm:gap-2 pt-2 sm:pt-4">
-                    <span id="server-indicator" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    <span id="server-health" class="text-[14px] sm:text-sm text-gray-500 font-mono">Checking...</span>
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h2l3-8 4 16 3-8h2" />
+                        </svg>
+                        <span class="text-[14px] sm:text-xs text-gray-500 font-mono uppercase tracking-wider">Jitter</span>
+                        <span id="jitter-value" class="text-[14px] sm:text-sm font-mono text-purple-400">--</span>
+                        <span class="text-[14px] sm:text-xs text-gray-600 font-mono">ms</span>
+                    </div>
+                    <div class="flex items-center justify-end gap-1.5 sm:gap-2">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                        </svg>
+                        <span class="text-[14px] sm:text-xs text-gray-500 font-mono uppercase tracking-wider">Bloat</span>
+                        <span id="bloat-value" class="text-[14px] sm:text-sm font-mono text-orange-400">--</span>
+                        <span class="text-[14px] sm:text-xs text-gray-600 font-mono">ms</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -190,6 +215,58 @@
             <p id="upload-delay-hint" style="margin-top:0.5rem; min-height:1rem; text-align:center; font-size:0.75rem; color:#f9ad16; opacity:0; transition:opacity 0.25s ease;"></p>
         </div>
 
+        <!-- Diagnosis Panel -->
+        <div id="diagnosis-panel" class="w-full max-w-3xl mx-auto mt-3 sm:mt-6 relative z-10" style="display:none; opacity:0; transform:translateY(8px); transition:opacity 0.4s ease, transform 0.4s ease;">
+            <div class="flux-card rounded-2xl px-4 sm:px-6 py-4 sm:py-5">
+
+                <!-- Card header -->
+                <div class="flex items-center justify-between mb-3 sm:mb-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-7 h-7 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <h3 class="text-base sm:text-lg font-semibold text-white tracking-wide">Connection Analysis</h3>
+                    </div>
+                    <button id="download-result-btn" onclick="downloadResultCard()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:border-cyan-400/40 hover:bg-white/10 transition-all duration-200 text-gray-400 hover:text-white text-xs font-mono">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span>Save Report</span>
+                    </button>
+                </div>
+
+                <!-- Score Banner -->
+                <div class="flex flex-col items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-white/10">
+                    <!-- Arc ring -->
+                    <div class="shrink-0 relative w-24 h-24 sm:w-28 sm:h-28">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+                            <circle id="score-arc" cx="50" cy="50" r="42" fill="none"
+                                stroke-linecap="round"
+                                stroke-dasharray="263.9"
+                                stroke-dashoffset="263.9"
+                                style="stroke:#22c55e; stroke-width:7; transition:stroke-dashoffset 0.8s ease-out, stroke 0.4s ease;"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="score-number" class="text-2xl sm:text-3xl font-light tracking-tighter leading-none text-white">--</span>
+                            <span class="text-[9px] sm:text-[10px] font-mono text-gray-500">/100</span>
+                        </div>
+                    </div>
+                    <!-- Grade + label -->
+                    <div class="text-center">
+                        <div class="flex items-center justify-center gap-2 mb-0.5 sm:mb-1">
+                            <span id="score-grade" class="text-3xl sm:text-4xl font-bold leading-none" style="color:#22c55e;">--</span>
+                            <p id="score-label" class="text-sm sm:text-base text-gray-400 font-mono">Analyzing…</p>
+                        </div>
+                        <span class="text-xs sm:text-sm font-mono text-gray-400 uppercase tracking-wider">Overall Score</span>
+                    </div>
+                </div>
+
+                <!-- Per-metric rows -->
+                <div id="diagnosis-items" class="space-y-0"></div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Status Bar -->
@@ -201,7 +278,7 @@
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                    <span class="text-white">FluxTest v0.1.1</span>
+                    <span class="text-white">FluxTest v0.1.2</span>
                 </div>
             </div>
             

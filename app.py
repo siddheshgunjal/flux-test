@@ -45,6 +45,13 @@ def ping():
         'timestamp': time.time()
     })
 
+@app.route('/bloat', methods=['GET'])
+def bloat():
+    """Latency probe used during active download to measure bufferbloat."""
+    return jsonify({
+        'ts': time.time()
+    })
+
 @app.route('/download', methods=['GET'])
 def download():
     """Download test endpoint — streams random data to the client for a fixed duration."""

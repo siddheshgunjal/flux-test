@@ -2,11 +2,15 @@
 
 ![FluxTest Logo](https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_logo_text.webp)
 
-FluxTest is a self-hosted server network test application that measures:
+FluxTest is a self-hosted server network diagnosis application that measures:
 
 - Latency (round-trip time)
+- Jitter (RTT consistency)
 - Download throughput
 - Upload throughput
+- Bufferbloat (latency under load)
+
+After each test, FluxTest generates an overall A–F network score with per-metric diagnosis and actionable recommendations. Results can be exported as a branded PNG report card.
 
 The app serves a browser UI and exposes HTTP endpoints for health checks and throughput testing between a client and your own hosted server.
 It is designed to run locally, in Docker.
@@ -21,9 +25,12 @@ It is not a public internet speed benchmark service and does not attempt to comp
 
 ## Features
 
-- Real-time latency measurement using repeated ping probes
+- **Latency & Jitter**: 5 sequential pings measure average RTT and jitter (standard deviation)
+- **Bufferbloat detection**: concurrent `/bloat` pings during the download test reveal latency inflation under load
 - **Time-based download test**: server streams random data for a fixed 15 s window
 - **Time-based upload test**: browser streams random data to the server for a fixed 15 s window
+- **Connection Analysis**: A–F network score (0–100) with per-metric diagnosis and production-focused recommendations
+- **Shareable Report**: one-click PNG export of the full diagnosis card — ready to attach to a ticket or archive
 - Live progress rings, speed readout, and elapsed-time display for both tests
 - Guaranteed completion at any network speed — no timeout on slow connections
 - Health endpoint for monitoring and orchestration
@@ -151,7 +158,7 @@ Note:
 - Default HTTP port: 4855
 - Download test duration: 15 s (server streams random data for exactly 15 s)
 - Upload test duration: 15 s (browser streams random data for exactly 15 s)
-- Full test completes in approximately 35 s (5 s latency probes + 15 s download + 15 s upload)
+- Full test completes in approximately 35 s (5 s latency probes + 15 s download with bufferbloat probes + 15 s upload)
 - Works correctly at any network speed — from gigabit LAN to sub-1 Mbps WAN links
 - Gunicorn workers in Docker image: 2
 - Best used to validate client-to-your-server throughput and latency

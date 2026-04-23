@@ -155,24 +155,47 @@ async function measureLatency(count = 5) {
         await res.json();
         times.push(performance.now() - t0);
     }
-    return times.reduce((a, b) => a + b, 0) / times.length;
+    const avg = times.reduce((a, b) => a + b, 0) / times.length;
+    const variance = times.reduce((sum, t) => sum + (t - avg) ** 2, 0) / times.length;
+    const jitter = Math.sqrt(variance);
+    return { avg, jitter };
+}
+
+// ── Bufferbloat probe (runs concurrently during download) ─────────────
+// Fires periodic pings to /bloat while the download saturates the link.
+// Returns the average latency-under-load so we can compare with idle RTT.
+async function _bloatProbeLoop(abortSignal) {
+    const samples = [];
+    while (!abortSignal.aborted) {
+        try {
+            const t0  = performance.now();
+            const res = await fetch('/bloat', { cache: 'no-store', signal: abortSignal });
+            if (!res.ok) break;
+            await res.json();
+            samples.push(performance.now() - t0);
+        } catch (_) { break; }
+        // Wait ~1 s between probes (skip if aborted)
+        await new Promise(r => { const id = setTimeout(r, 1000); abortSignal.addEventListener('abort', () => { clearTimeout(id); r(); }, { once: true }); });
+    }
+    if (samples.length === 0) return null;
+    return samples.reduce((a, b) => a + b, 0) / samples.length;
 }
 
 // ── Download test ─────────────────────────────────────────────────────
+// Returns { speed, bloatMs } — bloatMs is latency-under-load (or null).
 async function runDownloadTest() {
     resetCard('dl');
     setStatus('Testing download…', 'cyan');
 
     const startTime = performance.now();
-    let received    = 0;         // written only by the read loop
-    let testDone    = false;     // set true when the 15 s window closes
+    let received    = 0;
+    let testDone    = false;
     let rafHandle   = null;
 
-    // ── rAF render loop ───────────────────────────────────────────────
-    // Owns ALL DOM writes for speed/bytes/ring/timer.  Runs at the
-    // display's native frame rate so the ring animates smoothly even on
-    // high-refresh screens.  The read loop is pure data accumulation and
-    // never touches the DOM directly.
+    // Start bloat probe concurrently
+    const bloatAC = new AbortController();
+    const bloatPromise = _bloatProbeLoop(bloatAC.signal);
+
     function rafLoop() {
         const elapsed = Math.min((performance.now() - startTime) / 1000, TEST_DURATION_SECONDS);
         document.getElementById('dl-timer').textContent = fmtTime(elapsed);
@@ -196,29 +219,24 @@ async function runDownloadTest() {
 
         const reader = response.body.getReader();
 
-        // Pure accumulation loop — no DOM writes here.
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             received += value.length;
 
-            // Client-side cutoff: cancel any buffered data once the window expires.
             if ((performance.now() - startTime) / 1000 >= TEST_DURATION_SECONDS) {
                 reader.cancel();
                 break;
             }
         }
 
-        // Freeze the rAF loop before writing final values so the last rAF
-        // frame and the synchronous final write cannot race.
         testDone = true;
-        if (rafHandle !== null) {
-            cancelAnimationFrame(rafHandle);
-            rafHandle = null;
-        }
+        if (rafHandle !== null) { cancelAnimationFrame(rafHandle); rafHandle = null; }
 
-        // Speed uses the fixed test window as denominator, not total elapsed,
-        // so server response latency cannot artificially deflate the result.
+        // Stop bloat probes and collect result
+        bloatAC.abort();
+        const bloatMs = await bloatPromise;
+
         const finalMbps = (received * 8) / (TEST_DURATION_SECONDS * 1024 * 1024);
 
         document.getElementById('dl-speed').textContent = finalMbps.toFixed(1);
@@ -226,11 +244,12 @@ async function runDownloadTest() {
         document.getElementById('dl-timer').textContent = fmtTime(TEST_DURATION_SECONDS);
         setCircle('dl-circle', 1);
         setStatus('Download complete!', 'green');
-        return finalMbps;
+        return { speed: finalMbps, bloatMs };
 
     } catch (err) {
         testDone = true;
         if (rafHandle !== null) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+        bloatAC.abort();
         throw err;
     }
 }
@@ -343,19 +362,37 @@ function setupTestLogic() {
             if (card) card.classList.remove('complete-glow');
         });
 
-        let dlSpeed = 0, ulSpeed = 0, latencyMs = null;
+        // Hide diagnosis panel at the start of each new test
+        const diagPanel = document.getElementById('diagnosis-panel');
+        if (diagPanel) { diagPanel.style.display = 'none'; diagPanel.style.opacity = '0'; }
+
+        let dlSpeed = 0, ulSpeed = 0, latencyMs = null, jitterMs = null, bloatMs = null;
 
         try {
             // Always measure latency first
             setStatus('Measuring latency…', 'cyan');
-            latencyMs = await measureLatency();
-            document.getElementById('ping-value').textContent = latencyMs.toFixed(0);
+            const latResult = await measureLatency();
+            latencyMs = latResult.avg;
+            jitterMs  = latResult.jitter;
+            document.getElementById('ping-value').textContent   = latencyMs.toFixed(0);
+            document.getElementById('jitter-value').textContent = jitterMs.toFixed(1);
 
-            if (!ulOnly) dlSpeed = await runDownloadTest();
+            if (!ulOnly) {
+                const dlResult = await runDownloadTest();
+                dlSpeed = dlResult.speed;
+                bloatMs = dlResult.bloatMs;
+                // Display bloat in info bar
+                const bloatEl = document.getElementById('bloat-value');
+                if (bloatEl && bloatMs !== null) {
+                    const delta = Math.max(0, bloatMs - latencyMs);
+                    bloatEl.textContent = '+' + delta.toFixed(0);
+                }
+            }
             if (!dlOnly) ulSpeed = await runUploadTest();
 
-            setStatus('Test complete', 'green');
+            setStatus('Test Complete 👇🏼', 'green');
             triggerCompletionEffect();
+            showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
 
         } catch (e) {
             setStatus(`Error: ${e.message}`, 'red');
@@ -367,4 +404,472 @@ function setupTestLogic() {
     }
 
     document.getElementById('start-all-btn').addEventListener('click', () => run(false, false));
+}
+
+// ── Network score ─────────────────────────────────────────────────────
+function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
+    // 5 metrics × 20 points each → max 100
+    let latPts, jitPts, dlPts, ulPts, bloatPts;
+
+    if (latencyMs < 20)       latPts = 20;
+    else if (latencyMs < 60)  latPts = 16;
+    else if (latencyMs < 150) latPts = 8;
+    else                       latPts = 2;
+
+    if (jitterMs < 5)         jitPts = 20;
+    else if (jitterMs < 20)   jitPts = 12;
+    else                       jitPts = 2;
+
+    if (dlSpeed >= 100)       dlPts = 20;
+    else if (dlSpeed >= 25)   dlPts = 16;
+    else if (dlSpeed >= 10)   dlPts = 10;
+    else                       dlPts = 2;
+
+    if (ulSpeed >= 20)        ulPts = 20;
+    else if (ulSpeed >= 5)    ulPts = 12;
+    else                       ulPts = 2;
+
+    // Bufferbloat: delta = loaded RTT - idle RTT
+    const bloatDelta = (bloatMs != null && latencyMs != null) ? Math.max(0, bloatMs - latencyMs) : null;
+    if (bloatDelta === null)       bloatPts = 10;  // no data — neutral
+    else if (bloatDelta < 15)      bloatPts = 20;
+    else if (bloatDelta < 50)      bloatPts = 14;
+    else if (bloatDelta < 150)     bloatPts = 6;
+    else                            bloatPts = 2;
+
+    const score = latPts + jitPts + dlPts + ulPts + bloatPts;
+
+    let grade, label, color;
+    if (score >= 90)      { grade = 'A'; label = ' - Exceptional';  color = '#22c55e'; }
+    else if (score >= 75) { grade = 'B'; label = ' - Good';         color = '#4ade80'; }
+    else if (score >= 55) { grade = 'C'; label = ' - Fair';         color = '#f9ad16'; }
+    else if (score >= 35) { grade = 'D'; label = ' - Poor';         color = '#f97316'; }
+    else                   { grade = 'F'; label = ' - Critical';     color = '#ef4444'; }
+
+    return { score, grade, label, color };
+}
+
+// ── Diagnosis / recommendations ───────────────────────────────────────
+function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
+    const panel     = document.getElementById('diagnosis-panel');
+    const container = document.getElementById('diagnosis-items');
+    if (!panel || !container) return;
+
+    // Populate score banner
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+    const scoreNum   = document.getElementById('score-number');
+    const scoreGrade = document.getElementById('score-grade');
+    const scoreLabel = document.getElementById('score-label');
+    const scoreArc   = document.getElementById('score-arc');
+    if (scoreNum)   scoreNum.textContent = score;
+    if (scoreGrade) { scoreGrade.textContent = grade; scoreGrade.style.color = color; }
+    if (scoreLabel) { scoreLabel.textContent = label; scoreLabel.style.color = color; }
+    if (scoreArc)   { scoreArc.style.stroke = color; scoreArc.style.strokeDashoffset = String(263.9 * (1 - score / 100)); }
+
+    // Store raw values for PNG download
+    const serverName = document.getElementById('server-name')?.textContent || 'Server';
+    panel.dataset.latency  = latencyMs;
+    panel.dataset.jitter   = jitterMs;
+    panel.dataset.dlSpeed  = dlSpeed;
+    panel.dataset.ulSpeed  = ulSpeed;
+    panel.dataset.bloat    = bloatMs != null ? bloatMs : '';
+    panel.dataset.server   = serverName;
+    panel.dataset.ready    = '1';
+
+    container.innerHTML = '';
+    const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+
+    items.forEach((item, idx) => {
+        const el = document.createElement('div');
+        const isLast = idx === items.length - 1;
+        el.className = 'flex items-start gap-3 py-2.5 sm:py-3' + (isLast ? '' : ' border-b border-white/5');
+        el.innerHTML = `
+            <div class="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-2xl font-bold" style="background:${item.bgColor}; color:${item.color}">${item.icon}</div>
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-0.5">
+                    <span class="text-xs sm:text-sm font-mono uppercase tracking-wider text-gray-400">${item.metric}</span>
+                    <span class="text-xs sm:text-sm font-semibold" style="color:${item.color}">${item.verdict}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-gray-400 leading-relaxed">${item.recommendation}</p>
+            </div>`;
+        container.appendChild(el);
+    });
+
+    panel.style.display = '';
+    // Trigger animation on next frame
+    requestAnimationFrame(() => {
+        panel.style.opacity  = '1';
+        panel.style.transform = 'translateY(0)';
+    });
+}
+
+// ── Shareable result card (Canvas PNG) ───────────────────────────────
+function _wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+    for (const word of words) {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+        } else {
+            line = test;
+        }
+    }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+    return lines.length;
+}
+
+function _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
+function downloadResultCard() {
+    const panel = document.getElementById('diagnosis-panel');
+    if (!panel || !panel.dataset.ready) return;
+
+    const latencyMs  = parseFloat(panel.dataset.latency)  || 0;
+    const jitterMs   = parseFloat(panel.dataset.jitter)   || 0;
+    const dlSpeed    = parseFloat(panel.dataset.dlSpeed)  || 0;
+    const ulSpeed    = parseFloat(panel.dataset.ulSpeed)  || 0;
+    const bloatMs    = panel.dataset.bloat !== '' ? parseFloat(panel.dataset.bloat) : null;
+    const serverName = panel.dataset.server || 'Server';
+
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+    const gradeLabel = label.replace(/^ - /, '');
+    const diagItems  = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+
+    // Single-column card matching the Diagnosis panel layout
+    const W = 640, H = 800, DPR = 2;
+    const PAD = 24;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+
+    const SF = '-apple-system,BlinkMacSystemFont,Inter,sans-serif';
+    const MF = '"JetBrains Mono","Courier New",monospace';
+
+    // ── Background ───────────────────────────────────────────────────
+    ctx.fillStyle = '#0d0d0f';
+    ctx.fillRect(0, 0, W, H);
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0,   'rgba(6,182,212,0.06)');
+    bgGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+    bgGrad.addColorStop(1,   'rgba(168,85,247,0.06)');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Card border
+    ctx.save();
+    _roundRect(ctx, 0.5, 0.5, W - 1, H - 1, 16);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    // Top accent line (cyan → purple gradient)
+    const topGrad = ctx.createLinearGradient(0, 0, W, 0);
+    topGrad.addColorStop(0,   'transparent');
+    topGrad.addColorStop(0.4, 'rgba(6,182,212,0.7)');
+    topGrad.addColorStop(0.6, 'rgba(168,85,247,0.5)');
+    topGrad.addColorStop(1,   'transparent');
+    ctx.strokeStyle = topGrad;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD, 1); ctx.lineTo(W - PAD, 1);
+    ctx.stroke();
+
+    // ── Header — FluxTest branding ────────────────────────────────────
+    ctx.font = `300 26px ${SF}`;
+    ctx.fillStyle = '#ffffff';
+    const fluxW = ctx.measureText('Flux').width;
+    ctx.fillText('Flux', PAD, 38);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillText('Test', PAD + fluxW, 38);
+
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = 'rgba(188, 188, 188, 0.85)';
+    ctx.fillText('Network Diagnosis Report', PAD, 53);
+
+    ctx.textAlign = 'right';
+    ctx.font = `400 12px ${MF}`;
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillText(serverName, W - PAD, 38);
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = '#6e737a';
+    ctx.fillText(new Date().toLocaleString(), W - PAD, 53);
+    ctx.textAlign = 'left';
+
+    // Header separator
+    const HEADER_BOTTOM = 62;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, HEADER_BOTTOM); ctx.lineTo(W - PAD, HEADER_BOTTOM);
+    ctx.stroke();
+
+    // ── Score Banner — matches panel score section ────────────────────
+    const RING_R = 48, RING_CX = W / 2;
+    const RING_CY = HEADER_BOTTOM + 16 + RING_R;   // 126
+
+    // Background ring track
+    ctx.beginPath();
+    ctx.arc(RING_CX, RING_CY, RING_R, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 7;
+    ctx.stroke();
+
+    // Score arc
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(RING_CX, RING_CY, RING_R, -Math.PI / 2, -Math.PI / 2 + (score / 100) * Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.restore();
+
+    // Score number + /100 inside ring
+    ctx.textAlign = 'center';
+    ctx.font = `300 28px ${SF}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(score, RING_CX, RING_CY + 9);
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = '#848689';
+    ctx.fillText('/100', RING_CX, RING_CY + 23);
+
+    // Grade letter + label — flex items-center justify-center (matches panel)
+    const ringBottom = RING_CY + RING_R;     // 174
+    const gradeBaseY = ringBottom + 40;      // 204
+
+    ctx.font = `bold 32px ${SF}`;
+    const gradeW = ctx.measureText(grade).width;
+    ctx.font = `500 14px ${SF}`;
+    const labelW  = ctx.measureText(gradeLabel).width;
+    const rowW    = gradeW + 10 + labelW;
+    const rowX    = Math.round((W - rowW) / 2);
+
+    ctx.textAlign = 'left';
+    ctx.font = `bold 32px ${SF}`;
+    ctx.fillStyle = color;
+    ctx.fillText(grade, rowX, gradeBaseY);
+
+    ctx.font = `500 14px ${SF}`;
+    ctx.fillStyle = color;
+    ctx.fillText(gradeLabel, rowX + gradeW + 10, gradeBaseY - 5);   // slight raise to optically align
+
+    // "OVERALL SCORE" sub-label
+    ctx.textAlign = 'center';
+    ctx.font = `400 10px ${MF}`;
+    ctx.fillStyle = 'rgba(172, 175, 181, 0.75)';
+    ctx.fillText('OVERALL SCORE', RING_CX, gradeBaseY + 20);
+
+    // Score section separator (matches border-b border-white/10)
+    const SCORE_BOTTOM = gradeBaseY + 36;   // 240
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, SCORE_BOTTOM); ctx.lineTo(W - PAD, SCORE_BOTTOM);
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+
+    // ── Per-metric rows — matches panel diagnosis-items ───────────────
+    const ROW_START_Y = SCORE_BOTTOM + 8;       // 248
+    const FOOTER_SEP  = H - 44;                 // 656
+    const ROW_H       = (FOOTER_SEP - ROW_START_Y) / diagItems.length;  // ~102
+
+    const ICON_SZ   = 40;
+    const ROW_PAD_T = 12;   // top padding per row (matches py-3)
+    const REC_MAX_W = W - PAD - ICON_SZ - 14 - PAD;   // 538
+
+    diagItems.forEach((m, i) => {
+        const rowY     = ROW_START_Y + i * ROW_H;
+        const iconTopY = rowY + ROW_PAD_T;   // items-start: icon aligns to text top
+        const tx       = PAD + ICON_SZ + 14;
+
+        // Icon box (matches w-10 h-10 rounded-lg)
+        ctx.save();
+        _roundRect(ctx, PAD, iconTopY, ICON_SZ, ICON_SZ, 8);
+        ctx.fillStyle = m.bgColor;
+        ctx.fill();
+        ctx.restore();
+
+        ctx.font = '30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = m.color;
+        ctx.fillText(m.icon, PAD + ICON_SZ / 2, iconTopY + ICON_SZ / 2 + 10);
+        ctx.textAlign = 'left';
+
+        // Metric name + verdict on same baseline (matches flex items-baseline gap-x-2)
+        ctx.font = `400 14px ${MF}`;
+        ctx.fillStyle = 'rgba(180, 180, 180, 0.9)';
+        const metricW = ctx.measureText(m.metric.toUpperCase()).width;
+        ctx.fillText(m.metric.toUpperCase(), tx, iconTopY + 13);
+
+        ctx.font = `600 14px ${SF}`;
+        ctx.fillStyle = m.color;
+        ctx.fillText(m.verdict, tx + metricW + 8, iconTopY + 13);
+
+        // Recommendation text (matches text-xs text-gray-400 leading-relaxed)
+        ctx.font = `400 12px ${SF}`;
+        ctx.fillStyle = 'rgba(156,163,175,0.78)';
+        _wrapText(ctx, m.recommendation, tx, iconTopY + 29, REC_MAX_W, 14);
+
+        // Row separator (matches border-b border-white/5)
+        if (i < diagItems.length - 1) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(PAD, rowY + ROW_H); ctx.lineTo(W - PAD, rowY + ROW_H);
+            ctx.stroke();
+        }
+    });
+
+    // ── Footer ───────────────────────────────────────────────────────
+    const ftGrad = ctx.createLinearGradient(0, 0, W, 0);
+    ftGrad.addColorStop(0,   'transparent');
+    ftGrad.addColorStop(0.5, 'rgba(168,85,247,0.25)');
+    ftGrad.addColorStop(1,   'transparent');
+    ctx.strokeStyle = ftGrad;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD, FOOTER_SEP + 8); ctx.lineTo(W - PAD, FOOTER_SEP + 8);
+    ctx.stroke();
+
+    ctx.font = `400 9px ${MF}`;
+    ctx.fillStyle = '#374151';
+    ctx.fillText('github.com/siddheshgunjal/flux-test', PAD, H - 13);
+    ctx.textAlign = 'right';
+    ctx.fillText('FluxTest · Self-Hosted Network Diagnosis', W - PAD, H - 13);
+    ctx.textAlign = 'left';
+
+    // ── Trigger download ─────────────────────────────────────────────
+    const link = document.createElement('a');
+    link.download = `fluxtest-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+
+function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
+    const items = [];
+
+    // ── Latency ───────────────────────────────────────────────────────
+    let latColor, latVerdict, latRec;
+    if (latencyMs < 30) {
+        latColor = '#22c55e';
+        latVerdict = `Excellent — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'Exceptional TTFB. Clients will experience near-instant server responses — ideal for latency-sensitive APIs, real-time dashboards, and WebSocket connections.';
+    } else if (latencyMs < 90) {
+        latColor = '#22c55e';
+        latVerdict = `Good — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'Good response latency. Suitable for most web applications; API calls and page loads will feel responsive to end users across regions.';
+    } else if (latencyMs < 180) {
+        latColor = '#f9ad16';
+        latVerdict = `Fair — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'Moderate latency may degrade perceived performance. Consider deploying a CDN for streamable assets to reduce round-trip times.';
+    } else {
+        latColor = '#ef4444';
+        latVerdict = `High — ${latencyMs.toFixed(0)} ms`;
+        latRec = 'High latency will noticeably increase TTFB and hurt user experience. Investigate network path, hosting region, or consider edge/CDN deployment to bring content closer to users.';
+    }
+    items.push({ metric: 'Latency', icon: '⏱', bgColor: 'rgba(34,197,94,0.12)', color: latColor, verdict: latVerdict, recommendation: latRec });
+
+    // ── Jitter ────────────────────────────────────────────────────────
+    let jitColor, jitVerdict, jitRec;
+    if (jitterMs < 5) {
+        jitColor = '#22c55e';
+        jitVerdict = `Stable — ${jitterMs.toFixed(1)} ms`;
+        jitRec = 'Highly consistent response times. Reliable for WebSocket connections, Server-Sent Events, real-time collaboration features, and microservice-to-microservice calls.';
+    } else if (jitterMs < 20) {
+        jitColor = '#f9ad16';
+        jitVerdict = `Moderate — ${jitterMs.toFixed(1)} ms`;
+        jitRec = 'Some timing variability. May cause occasional retries in chained service calls. Monitor p95/p99 latency in production and review upstream provider SLAs.';
+    } else {
+        jitColor = '#ef4444';
+        jitVerdict = `High — ${jitterMs.toFixed(1)} ms`;
+        jitRec = 'Inconsistent response times will trigger client-side timeouts and degrade real-time features. Investigate NIC configuration, network contention, or switch to a more stable hosting provider.';
+    }
+    items.push({ metric: 'Jitter', icon: '〰', bgColor: 'rgba(168,85,247,0.12)', color: jitColor, verdict: jitVerdict, recommendation: jitRec });
+
+    // ── Download (ingress) ────────────────────────────────────────────
+    let dlColor, dlVerdict, dlRec;
+    if (dlSpeed >= 100) {
+        dlColor = '#22c55e';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Strong ingress bandwidth. Handles large file uploads, webhook payloads, and database sync traffic from many concurrent clients without link saturation.';
+    } else if (dlSpeed >= 25) {
+        dlColor = '#22c55e';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Adequate ingress for most web workloads. Monitor utilisation during traffic spikes to ensure upload-heavy endpoints do not saturate the link.';
+    } else if (dlSpeed >= 10) {
+        dlColor = '#f9ad16';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Limited ingress may become a bottleneck when clients send large request bodies or files concurrently. Consider rate limiting uploads or routing them through a dedicated ingress path.';
+    } else {
+        dlColor = '#ef4444';
+        dlVerdict = `${dlSpeed.toFixed(1)} Mbps`;
+        dlRec = 'Insufficient ingress bandwidth for production use with concurrent uploads or large API payloads. Upgrade your hosting plan or network connection immediately.';
+    }
+    items.push({ metric: 'Download', icon: '↓', bgColor: 'rgba(6,182,212,0.12)', color: dlColor, verdict: dlVerdict, recommendation: dlRec });
+
+    // ── Upload (egress) ───────────────────────────────────────────────
+    let ulColor, ulVerdict, ulRec;
+    if (ulSpeed >= 20) {
+        ulColor = '#22c55e';
+        ulVerdict = `${ulSpeed.toFixed(1)} Mbps`;
+        ulRec = 'Good egress capacity. Sufficient for serving concurrent users with web assets, API responses, and media. Monitor utilisation as traffic scales and set bandwidth alerts.';
+    } else if (ulSpeed >= 5) {
+        ulColor = '#f9ad16';
+        ulVerdict = `${ulSpeed.toFixed(1)} Mbps`;
+        ulRec = 'Moderate egress. Adequate for low-to-medium traffic volumes. Under heavy concurrent load or with large asset delivery, this link may saturate — offload static content to a CDN.';
+    } else {
+        ulColor = '#ef4444';
+        ulVerdict = `${ulSpeed.toFixed(1)} Mbps`;
+        ulRec = 'Critically low egress bandwidth for a production server. Concurrent users will experience slow page loads and elevated response times. Upgrade your plan or offload assets to a CDN immediately.';
+    }
+    items.push({ metric: 'Upload', icon: '↑', bgColor: 'rgba(168,85,247,0.12)', color: ulColor, verdict: ulVerdict, recommendation: ulRec });
+
+    // ── Bufferbloat ───────────────────────────────────────────────────
+    const bloatDelta = (bloatMs != null && latencyMs != null) ? Math.max(0, bloatMs - latencyMs) : null;
+    let bbColor, bbVerdict, bbRec;
+    if (bloatDelta === null) {
+        bbColor = '#6b7280';
+        bbVerdict = 'No data';
+        bbRec = 'Bufferbloat could not be measured. This may occur if the download test was skipped or the probe requests were blocked.';
+    } else if (bloatDelta < 15) {
+        bbColor = '#22c55e';
+        bbVerdict = `Minimal — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Negligible latency increase under load. Your network path has proper queue management (SQM/fq_codel). Real-time traffic will not be disrupted during bulk transfers.';
+    } else if (bloatDelta < 50) {
+        bbColor = '#f9ad16';
+        bbVerdict = `Moderate — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Noticeable latency spike under saturation. Interactive sessions (SSH, WebSocket) may feel sluggish during heavy transfers. Consider enabling SQM or fq_codel on your router.';
+    } else if (bloatDelta < 150) {
+        bbColor = '#f97316';
+        bbVerdict = `High — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Significant buffer bloat detected. Real-time protocols and interactive sessions will degrade severely during bulk data transfers. Enable smart queue management (SQM) on your router or upstream gateway.';
+    } else {
+        bbColor = '#ef4444';
+        bbVerdict = `Severe — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Extreme buffer bloat — latency balloons under load. VoIP, gaming, and real-time APIs become unusable during transfers. SQM/fq_codel is essential. Consider hardware with better queue management.';
+    }
+    items.push({ metric: 'Bloat', icon: '🫧', bgColor: 'rgba(249,115,22,0.12)', color: bbColor, verdict: bbVerdict, recommendation: bbRec });
+
+    return items;
 }
