@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "FluxTest"
-version = "0.1.1"
+version = "0.1.2"
 description = "FluxTest is a self-hosted server network test application"
 readme = "README.md"
 requires-python = ">=3.14"
