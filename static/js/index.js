@@ -161,21 +161,41 @@ async function measureLatency(count = 5) {
     return { avg, jitter };
 }
 
+// ── Bufferbloat probe (runs concurrently during download) ─────────────
+// Fires periodic pings to /bloat while the download saturates the link.
+// Returns the average latency-under-load so we can compare with idle RTT.
+async function _bloatProbeLoop(abortSignal) {
+    const samples = [];
+    while (!abortSignal.aborted) {
+        try {
+            const t0  = performance.now();
+            const res = await fetch('/bloat', { cache: 'no-store', signal: abortSignal });
+            if (!res.ok) break;
+            await res.json();
+            samples.push(performance.now() - t0);
+        } catch (_) { break; }
+        // Wait ~1 s between probes (skip if aborted)
+        await new Promise(r => { const id = setTimeout(r, 1000); abortSignal.addEventListener('abort', () => { clearTimeout(id); r(); }, { once: true }); });
+    }
+    if (samples.length === 0) return null;
+    return samples.reduce((a, b) => a + b, 0) / samples.length;
+}
+
 // ── Download test ─────────────────────────────────────────────────────
+// Returns { speed, bloatMs } — bloatMs is latency-under-load (or null).
 async function runDownloadTest() {
     resetCard('dl');
     setStatus('Testing download…', 'cyan');
 
     const startTime = performance.now();
-    let received    = 0;         // written only by the read loop
-    let testDone    = false;     // set true when the 15 s window closes
+    let received    = 0;
+    let testDone    = false;
     let rafHandle   = null;
 
-    // ── rAF render loop ───────────────────────────────────────────────
-    // Owns ALL DOM writes for speed/bytes/ring/timer.  Runs at the
-    // display's native frame rate so the ring animates smoothly even on
-    // high-refresh screens.  The read loop is pure data accumulation and
-    // never touches the DOM directly.
+    // Start bloat probe concurrently
+    const bloatAC = new AbortController();
+    const bloatPromise = _bloatProbeLoop(bloatAC.signal);
+
     function rafLoop() {
         const elapsed = Math.min((performance.now() - startTime) / 1000, TEST_DURATION_SECONDS);
         document.getElementById('dl-timer').textContent = fmtTime(elapsed);
@@ -199,29 +219,24 @@ async function runDownloadTest() {
 
         const reader = response.body.getReader();
 
-        // Pure accumulation loop — no DOM writes here.
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             received += value.length;
 
-            // Client-side cutoff: cancel any buffered data once the window expires.
             if ((performance.now() - startTime) / 1000 >= TEST_DURATION_SECONDS) {
                 reader.cancel();
                 break;
             }
         }
 
-        // Freeze the rAF loop before writing final values so the last rAF
-        // frame and the synchronous final write cannot race.
         testDone = true;
-        if (rafHandle !== null) {
-            cancelAnimationFrame(rafHandle);
-            rafHandle = null;
-        }
+        if (rafHandle !== null) { cancelAnimationFrame(rafHandle); rafHandle = null; }
 
-        // Speed uses the fixed test window as denominator, not total elapsed,
-        // so server response latency cannot artificially deflate the result.
+        // Stop bloat probes and collect result
+        bloatAC.abort();
+        const bloatMs = await bloatPromise;
+
         const finalMbps = (received * 8) / (TEST_DURATION_SECONDS * 1024 * 1024);
 
         document.getElementById('dl-speed').textContent = finalMbps.toFixed(1);
@@ -229,11 +244,12 @@ async function runDownloadTest() {
         document.getElementById('dl-timer').textContent = fmtTime(TEST_DURATION_SECONDS);
         setCircle('dl-circle', 1);
         setStatus('Download complete!', 'green');
-        return finalMbps;
+        return { speed: finalMbps, bloatMs };
 
     } catch (err) {
         testDone = true;
         if (rafHandle !== null) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+        bloatAC.abort();
         throw err;
     }
 }
@@ -350,7 +366,7 @@ function setupTestLogic() {
         const diagPanel = document.getElementById('diagnosis-panel');
         if (diagPanel) { diagPanel.style.display = 'none'; diagPanel.style.opacity = '0'; }
 
-        let dlSpeed = 0, ulSpeed = 0, latencyMs = null, jitterMs = null;
+        let dlSpeed = 0, ulSpeed = 0, latencyMs = null, jitterMs = null, bloatMs = null;
 
         try {
             // Always measure latency first
@@ -361,12 +377,22 @@ function setupTestLogic() {
             document.getElementById('ping-value').textContent   = latencyMs.toFixed(0);
             document.getElementById('jitter-value').textContent = jitterMs.toFixed(1);
 
-            if (!ulOnly) dlSpeed = await runDownloadTest();
+            if (!ulOnly) {
+                const dlResult = await runDownloadTest();
+                dlSpeed = dlResult.speed;
+                bloatMs = dlResult.bloatMs;
+                // Display bloat in info bar
+                const bloatEl = document.getElementById('bloat-value');
+                if (bloatEl && bloatMs !== null) {
+                    const delta = Math.max(0, bloatMs - latencyMs);
+                    bloatEl.textContent = '+' + delta.toFixed(0);
+                }
+            }
             if (!dlOnly) ulSpeed = await runUploadTest();
 
             setStatus('Test Complete 👇🏼', 'green');
             triggerCompletionEffect();
-            showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed);
+            showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
 
         } catch (e) {
             setStatus(`Error: ${e.message}`, 'red');
@@ -381,29 +407,37 @@ function setupTestLogic() {
 }
 
 // ── Network score ─────────────────────────────────────────────────────
-function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed) {
-    // Each metric contributes up to 25 points → max 100
-    let latPts, jitPts, dlPts, ulPts;
+function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
+    // 5 metrics × 20 points each → max 100
+    let latPts, jitPts, dlPts, ulPts, bloatPts;
 
-    if (latencyMs < 20)       latPts = 25;
-    else if (latencyMs < 60)  latPts = 20;
-    else if (latencyMs < 150) latPts = 10;
-    else                       latPts = 3;
+    if (latencyMs < 20)       latPts = 20;
+    else if (latencyMs < 60)  latPts = 16;
+    else if (latencyMs < 150) latPts = 8;
+    else                       latPts = 2;
 
-    if (jitterMs < 5)         jitPts = 25;
-    else if (jitterMs < 20)   jitPts = 15;
-    else                       jitPts = 3;
+    if (jitterMs < 5)         jitPts = 20;
+    else if (jitterMs < 20)   jitPts = 12;
+    else                       jitPts = 2;
 
-    if (dlSpeed >= 100)       dlPts = 25;
-    else if (dlSpeed >= 25)   dlPts = 20;
-    else if (dlSpeed >= 10)   dlPts = 12;
-    else                       dlPts = 3;
+    if (dlSpeed >= 100)       dlPts = 20;
+    else if (dlSpeed >= 25)   dlPts = 16;
+    else if (dlSpeed >= 10)   dlPts = 10;
+    else                       dlPts = 2;
 
-    if (ulSpeed >= 20)        ulPts = 25;
-    else if (ulSpeed >= 5)    ulPts = 15;
-    else                       ulPts = 3;
+    if (ulSpeed >= 20)        ulPts = 20;
+    else if (ulSpeed >= 5)    ulPts = 12;
+    else                       ulPts = 2;
 
-    const score = latPts + jitPts + dlPts + ulPts;
+    // Bufferbloat: delta = loaded RTT - idle RTT
+    const bloatDelta = (bloatMs != null && latencyMs != null) ? Math.max(0, bloatMs - latencyMs) : null;
+    if (bloatDelta === null)       bloatPts = 10;  // no data — neutral
+    else if (bloatDelta < 15)      bloatPts = 20;
+    else if (bloatDelta < 50)      bloatPts = 14;
+    else if (bloatDelta < 150)     bloatPts = 6;
+    else                            bloatPts = 2;
+
+    const score = latPts + jitPts + dlPts + ulPts + bloatPts;
 
     let grade, label, color;
     if (score >= 90)      { grade = 'A'; label = ' - Exceptional';  color = '#22c55e'; }
@@ -416,13 +450,13 @@ function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed) {
 }
 
 // ── Diagnosis / recommendations ───────────────────────────────────────
-function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed) {
+function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
     const panel     = document.getElementById('diagnosis-panel');
     const container = document.getElementById('diagnosis-items');
     if (!panel || !container) return;
 
     // Populate score banner
-    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed);
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
     const scoreNum   = document.getElementById('score-number');
     const scoreGrade = document.getElementById('score-grade');
     const scoreLabel = document.getElementById('score-label');
@@ -438,11 +472,12 @@ function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed) {
     panel.dataset.jitter   = jitterMs;
     panel.dataset.dlSpeed  = dlSpeed;
     panel.dataset.ulSpeed  = ulSpeed;
+    panel.dataset.bloat    = bloatMs != null ? bloatMs : '';
     panel.dataset.server   = serverName;
     panel.dataset.ready    = '1';
 
     container.innerHTML = '';
-    const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed);
+    const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
 
     items.forEach((item, idx) => {
         const el = document.createElement('div');
@@ -509,14 +544,15 @@ function downloadResultCard() {
     const jitterMs   = parseFloat(panel.dataset.jitter)   || 0;
     const dlSpeed    = parseFloat(panel.dataset.dlSpeed)  || 0;
     const ulSpeed    = parseFloat(panel.dataset.ulSpeed)  || 0;
+    const bloatMs    = panel.dataset.bloat !== '' ? parseFloat(panel.dataset.bloat) : null;
     const serverName = panel.dataset.server || 'Server';
 
-    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed);
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
     const gradeLabel = label.replace(/^ - /, '');
-    const diagItems  = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed);
+    const diagItems  = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
 
     // Single-column card matching the Diagnosis panel layout
-    const W = 640, H = 700, DPR = 2;
+    const W = 640, H = 800, DPR = 2;
     const PAD = 24;
 
     const canvas = document.createElement('canvas');
@@ -730,7 +766,7 @@ function downloadResultCard() {
     link.click();
 }
 
-function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed) {
+function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
     const items = [];
 
     // ── Latency ───────────────────────────────────────────────────────
@@ -808,6 +844,32 @@ function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed) {
         ulRec = 'Critically low egress bandwidth for a production server. Concurrent users will experience slow page loads and elevated response times. Upgrade your plan or offload assets to a CDN immediately.';
     }
     items.push({ metric: 'Upload', icon: '↑', bgColor: 'rgba(168,85,247,0.12)', color: ulColor, verdict: ulVerdict, recommendation: ulRec });
+
+    // ── Bufferbloat ───────────────────────────────────────────────────
+    const bloatDelta = (bloatMs != null && latencyMs != null) ? Math.max(0, bloatMs - latencyMs) : null;
+    let bbColor, bbVerdict, bbRec;
+    if (bloatDelta === null) {
+        bbColor = '#6b7280';
+        bbVerdict = 'No data';
+        bbRec = 'Bufferbloat could not be measured. This may occur if the download test was skipped or the probe requests were blocked.';
+    } else if (bloatDelta < 15) {
+        bbColor = '#22c55e';
+        bbVerdict = `Minimal — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Negligible latency increase under load. Your network path has proper queue management (SQM/fq_codel). Real-time traffic will not be disrupted during bulk transfers.';
+    } else if (bloatDelta < 50) {
+        bbColor = '#f9ad16';
+        bbVerdict = `Moderate — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Noticeable latency spike under saturation. Interactive sessions (SSH, WebSocket) may feel sluggish during heavy transfers. Consider enabling SQM or fq_codel on your router.';
+    } else if (bloatDelta < 150) {
+        bbColor = '#f97316';
+        bbVerdict = `High — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Significant buffer bloat detected. Real-time protocols and interactive sessions will degrade severely during bulk data transfers. Enable smart queue management (SQM) on your router or upstream gateway.';
+    } else {
+        bbColor = '#ef4444';
+        bbVerdict = `Severe — +${bloatDelta.toFixed(0)} ms`;
+        bbRec = 'Extreme buffer bloat — latency balloons under load. VoIP, gaming, and real-time APIs become unusable during transfers. SQM/fq_codel is essential. Consider hardware with better queue management.';
+    }
+    items.push({ metric: 'Bloat', icon: '🫧', bgColor: 'rgba(249,115,22,0.12)', color: bbColor, verdict: bbVerdict, recommendation: bbRec });
 
     return items;
 }
