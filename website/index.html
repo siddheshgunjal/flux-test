@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FluxTest — Self-Hosted Network Speed Test</title>
-    <meta name="description" content="FluxTest is a self-hosted network speed test for your own infrastructure. Measure latency, download, and upload throughput with a beautiful browser UI. Works at any connection speed.">
-    <meta property="og:title" content="FluxTest — Self-Hosted Network Speed Test">
+    <title>FluxTest — Self-Hosted Network Diagnosis</title>
+    <meta name="description" content="FluxTest is a self-hosted network diagnosis tool for your own infrastructure. Measure latency, jitter, download, and upload throughput with a beautiful browser UI — plus an overall network score and connection analysis.">
+    <meta property="og:title" content="FluxTest — Self-Hosted Network Diagnosis">
     <meta property="og:description" content="Time-based download & upload tests. Guaranteed completion at any network speed. Deploy with Docker in seconds.">
     <meta property="og:image" content="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_logo_text.webp">
     <meta property="og:type" content="website">
@@ -56,18 +56,18 @@
 
         <!-- Status pill -->
         <div class="status-pill text-sm font-mono px-3 py-1 rounded-full mb-6 reveal">
-            v0.1.1 · Self-hosted · Open Source
+            v0.1.2 · Self-hosted · Open Source
         </div>
 
         <!-- Headline -->
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-light text-center tracking-tight leading-tight max-w-3xl reveal" style="transition-delay:0.1s">
-            Network speed testing
+            Network Diagnosis
             <br>
             <span class="gradient-text font-semibold">for your own server</span>
         </h1>
 
         <p class="mt-5 text-base sm:text-lg text-gray-400 text-center max-w-xl leading-relaxed reveal" style="transition-delay:0.2s">
-            FluxTest is a self-hosted speed test that measures latency, download, and upload throughput between a browser and <em>your</em> infrastructure — not a third-party CDN.
+            FluxTest is a self-hosted network diagnosis tool that measures latency, download, and upload throughput between a browser and <em>your</em> infrastructure — not a third-party CDN.
         </p>
 
         <!-- CTAs -->
@@ -96,21 +96,57 @@
                 <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"></div>
 
                 <!-- server bar -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="4" y="4" width="16" height="6" rx="2" stroke-width="2"/>
-                            <rect x="4" y="14" width="16" height="6" rx="2" stroke-width="2"/>
-                            <circle cx="8" cy="7" r="1" fill="currentColor" stroke="none"/>
-                            <circle cx="8" cy="17" r="1" fill="currentColor" stroke="none"/>
-                        </svg>
-                        <span class="text-xs text-gray-500 mono uppercase tracking-wider">Server</span>
-                        <span class="text-sm text-white mono">my-homelab-01</span>
+                <div class="mb-6 pb-4 border-b border-white/5">
+                    <!-- Row 1: Server + Status -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="4" y="4" width="16" height="6" rx="2" stroke-width="2"/>
+                                <rect x="4" y="14" width="16" height="6" rx="2" stroke-width="2"/>
+                                <circle cx="8" cy="7" r="1" fill="currentColor" stroke="none"/>
+                                <circle cx="8" cy="17" r="1" fill="currentColor" stroke="none"/>
+                            </svg>
+                            <span class="text-xs text-gray-500 mono uppercase tracking-wider">Server</span>
+                            <span class="text-sm text-white mono">my-homelab-01</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-width="2" stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <path stroke-width="2" d="M10 10.105a1.105 1.105 0 0 1 1.105-1.105h1.79a1.105 1.105 0 0 1 1.105 1.105v9.79a1.105 1.105 0 0 1-1.105 1.105h-1.79a1.105 1.105 0 0 1-1.105-1.105l0-9.79"/>
+                                <path stroke-width="2" d="M17 4.105a1.105 1.105 0 0 1 1.105-1.105h1.79a1.105 1.105 0 0 1 1.105 1.105v15.79a1.105 1.105 0 0 1-1.105 1.105h-1.79a1.105 1.105 0 0 1-1.105-1.105l0-15.79"/>
+                                <path stroke-width="2" d="M3 19a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>
+                            </svg>
+                            <span class="text-xs text-gray-500 mono uppercase tracking-wider">Status</span>
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            <span class="text-sm text-green-500 mono">Online</span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500 mono">Latency</span>
-                        <span class="text-sm text-cyan-400 mono font-bold">4</span>
-                        <span class="text-xs text-gray-600 mono">ms</span>
+                    <!-- Row 2: Latency + Jitter -->
+                    <div class="flex items-center justify-center gap-6">
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-xs text-gray-500 mono uppercase tracking-wider">Latency</span>
+                            <span class="text-sm text-cyan-400 mono font-bold">4</span>
+                            <span class="text-xs text-gray-600 mono">ms</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h2l3-8 4 16 3-8h2"/>
+                            </svg>
+                            <span class="text-xs text-gray-500 mono uppercase tracking-wider">Jitter</span>
+                            <span class="text-sm text-purple-400 mono font-bold">1.2</span>
+                            <span class="text-xs text-gray-600 mono">ms</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                            </svg>
+                            <span class="text-xs text-gray-500 mono uppercase tracking-wider">Bloat</span>
+                            <span class="text-sm text-orange-400 mono font-bold">+3</span>
+                            <span class="text-xs text-gray-600 mono">ms</span>
+                        </div>
                     </div>
                 </div>
 
@@ -191,6 +227,106 @@
                     </div>
                 </div>
 
+                <!-- Diagnosis Panel Mockup -->
+                <div class="mt-5 pt-5 border-t border-white/5">
+                    <!-- Panel header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <span class="text-base font-semibold text-white tracking-wide">Connection Analysis</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 text-gray-400 text-xs mono">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Save Report
+                        </div>
+                    </div>
+                    <!-- Score banner -->
+                    <div class="flex flex-col items-center gap-2 mb-4 pb-4 border-b border-white/10">
+                        <div class="relative w-16 h-16">
+                            <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+                                <circle cx="50" cy="50" r="42" fill="none" stroke="#22c55e" stroke-width="7" stroke-linecap="round" stroke-dasharray="263.9" stroke-dashoffset="26.4"/>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-sm font-light text-white leading-none">90</span>
+                                <span class="text-[8px] mono text-gray-500">/100</span>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="flex items-center justify-center gap-2 mb-0.5">
+                                <span class="text-xl font-bold" style="color:#22c55e">A</span>
+                                <span class="text-xs mono" style="color:#22c55e"> - Exceptional</span>
+                            </div>
+                            <span class="text-[10px] mono text-gray-400 uppercase tracking-wider">Overall Score</span>
+                        </div>
+                    </div>
+                    <!-- Metric rows -->
+                    <div class="space-y-0">
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-xl">⏱</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-xs mono text-gray-500 uppercase tracking-wider">Latency</span>
+                                    <span class="text-sm font-semibold" style="color:#22c55e">Excellent — 4 ms</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Exceptional TTFB. Ideal for latency-sensitive APIs and real-time dashboards.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-xl">〰</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-xs mono text-gray-500 uppercase tracking-wider">Jitter</span>
+                                    <span class="text-sm font-semibold" style="color:#22c55e">Stable — 0.2 ms</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Highly consistent response times. Reliable for WebSocket connections, real-time collaboration features.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-xl">↓</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-xs mono text-gray-500 uppercase tracking-wider">Download</span>
+                                    <span class="text-sm font-semibold" style="color:#22c55e">Excellent — 102 Mbps</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Ample ingress. Static assets and streaming payloads served without bottleneck.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-xl">↑</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-xs mono text-gray-500 uppercase tracking-wider">Upload</span>
+                                    <span class="text-sm font-semibold" style="color:#22c55e">Good — 45 Mbps</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Sufficient egress for most workloads. Monitor under concurrent heavy upload.</p>
+                            </div>
+                        </div>                        <div class="flex items-start gap-2.5 py-2 border-t border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(249,115,22,0.12)">
+                                <span class="text-sm">🫧</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-[10px] mono text-gray-500 uppercase tracking-wider">Bloat</span>
+                                    <span class="text-xs font-semibold" style="color:#22c55e">Minimal — +3 ms</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Negligible latency increase under load. Your network has proper queue management.</p>
+                            </div>
+                        </div>                    </div>
+                </div>
+
                 <!-- bottom glow line -->
                 <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple-400/30 to-transparent"></div>
             </div>
@@ -209,17 +345,6 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
                 <!-- Feature 1 -->
-                <div class="flux-card rounded-2xl p-5 reveal">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-base font-semibold text-white mb-1.5">Time-Based Tests</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">Both download and upload run for a fixed 15 s window — no fixed file size, no timeout on slow links.</p>
-                </div>
-
-                <!-- Feature 2 -->
                 <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.05s">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
                         <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,18 +355,18 @@
                     <p class="text-sm text-gray-400 leading-relaxed">Live speed rings, Mbps readout, elapsed timer, and byte counter updating at the display's native frame rate.</p>
                 </div>
 
-                <!-- Feature 3 -->
+                <!-- Feature 2 -->
                 <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.1s">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/25 flex items-center justify-center mb-3">
                         <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h2l3-8 4 16 3-8h2"/>
                         </svg>
                     </div>
-                    <h3 class="text-base font-semibold text-white mb-1.5">Latency Probes</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">5 sequential ping probes averaged before each test for an accurate RTT baseline.</p>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Latency, Jitter &amp; Bloat</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">5 sequential pings compute average RTT and jitter (stddev). During download, concurrent pings detect bufferbloat — exposing connection stability under load.</p>
                 </div>
 
-                <!-- Feature 4 -->
+                <!-- Feature 3 -->
                 <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.15s">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
                         <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,7 +377,7 @@
                     <p class="text-sm text-gray-400 leading-relaxed">Test against your own VPS, home-lab, edge node, or bare-metal server — not a third-party CDN.</p>
                 </div>
 
-                <!-- Feature 5 -->
+                <!-- Feature 4 -->
                 <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.2s">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/25 flex items-center justify-center mb-3">
                         <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,7 +388,7 @@
                     <p class="text-sm text-gray-400 leading-relaxed">Pre-built image on GHCR. One <code class="text-purple-300 text-xs">docker compose up</code> command to deploy with Gunicorn and Traefik labels.</p>
                 </div>
 
-                <!-- Feature 6 -->
+                <!-- Feature 5 -->
                 <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.25s">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
                         <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,32 +399,43 @@
                     <p class="text-sm text-gray-400 leading-relaxed">Streaming chunks prevent memory exhaustion. Server-side upload ceiling stops runaway workers. Cache-control on all data endpoints.</p>
                 </div>
 
+                <!-- Feature 6 -->
+                <div class="flux-card rounded-2xl p-5 reveal" style="transition-delay:0.3s">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/25 flex items-center justify-center mb-3">
+                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Connection Analysis &amp; Report</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">After every test, an A–F network score and per-metric diagnosis with actionable insights. Hit <span class="text-gray-300 mono text-xs">Save Report</span> to export a ready to attach to a ticket or document a baseline.</p>
+                </div>
+
             </div>
         </div>
     </section>
 
     <!-- ── How It Works ───────────────────────────────────────────────── -->
     <section class="relative z-10 py-20 px-4 sm:px-6">
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-5xl mx-auto">
             <div class="text-center mb-12 reveal">
                 <span class="text-base mono text-cyan-400 uppercase tracking-widest">Under the hood</span>
                 <h2 class="text-3xl sm:text-4xl font-light text-white mt-2">How a test works</h2>
             </div>
 
-            <div class="relative grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
                 <!-- Step 1 -->
                 <div class="flux-card rounded-2xl p-5 text-center reveal">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-4 text-cyan-400 font-bold mono text-lg">1</div>
-                    <h3 class="text-base font-semibold text-white mb-2">Latency Probe</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">Five <code class="text-cyan-300">/ping</code> requests are fired sequentially. The average RTT is displayed as your latency baseline.</p>
+                    <h3 class="text-base font-semibold text-white mb-2">Latency &amp; Jitter Probe</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Five <code class="text-cyan-300">/ping</code> requests are fired sequentially. Average RTT is your latency; the standard deviation across those five samples is your jitter.</p>
                 </div>
 
                 <!-- Step 2 -->
                 <div class="flux-card rounded-2xl p-5 text-center reveal" style="transition-delay:0.1s">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-4 text-cyan-400 font-bold mono text-lg">2</div>
-                    <h3 class="text-base font-semibold text-white mb-2">Download (15 s)</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">The server streams 1 MB random chunks for exactly 15 s. The browser reads the stream and computes live Mbps via <code class="text-cyan-300">requestAnimationFrame</code>.</p>
+                    <h3 class="text-base font-semibold text-white mb-2">Download + Bloat Probe (15 s)</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">The server streams 1 MB random chunks. The browser reads the stream and computes live speed. Concurrently, periodic <code class="text-cyan-300">/bloat</code> pings measure latency under load to detect bufferbloat.</p>
                 </div>
 
                 <!-- Step 3 -->
@@ -307,6 +443,13 @@
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-4 text-purple-400 font-bold mono text-lg">3</div>
                     <h3 class="text-base font-semibold text-white mb-2">Upload (15 s)</h3>
                     <p class="text-sm text-gray-400 leading-relaxed">The browser generates random 64 KB chunks via <code class="text-purple-300">ReadableStream</code> for 15 s, then closes. The server counts received bytes and returns the result.</p>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="flux-card rounded-2xl p-5 text-center reveal" style="transition-delay:0.3s">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-4 text-cyan-400 font-bold mono text-lg">4</div>
+                    <h3 class="text-base font-semibold text-white mb-2">Report</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Every metric is scored A–F and accompanied by a production-focused recommendation. Hit <code class="text-cyan-300">Save Report</code> to export a branded PNG you can share or archive.</p>
                 </div>
 
             </div>
@@ -429,9 +572,11 @@
                     <ul class="space-y-2.5 text-sm text-gray-400">
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Validating client-to-server throughput on your home lab</li>
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Testing VPS network performance after provisioning</li>
-                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Diagnosing bandwidth bottlenecks on Cloudflare Tunnels</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Diagnosing bandwidth bottlenecks on Tunnels or Proxies</li>
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Checking edge node connectivity in private clouds</li>
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Verifying network after Docker/K8s deployments</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Getting a connection score with per-metric production recommendations</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Exporting a report card to document and share network baselines</li>
                     </ul>
                 </div>
                 <div class="flux-card rounded-2xl p-6 reveal" style="transition-delay:0.1s">
@@ -445,6 +590,7 @@
                         <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> A public ISP speed benchmark (no geographically distributed nodes)</li>
                         <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> A replacement for Speedtest.net or fast.com</li>
                         <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> Designed to be exposed publicly on the internet</li>
+                        <li class="flex items-start gap-2"><span class="text-gray-600 mt-0.5">·</span> A synthetic traffic generator for load testing or benchmarking</li>
                     </ul>
                 </div>
             </div>
@@ -459,22 +605,16 @@
             </div>
             <div class="flex flex-wrap justify-center gap-3 reveal">
                 <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
-                    <span class="text-cyan-400">⬡</span> Flask
-                </span>
-                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
-                    <span class="text-green-400">⬡</span> Gunicorn
+                    <span class="text-yellow-400">⬡</span> Python
                 </span>
                 <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
                     <span class="text-blue-400">⬡</span> Docker
                 </span>
                 <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
-                    <span class="text-yellow-400">⬡</span> Vanilla JS
+                    <span class="text-cyan-400">⬡</span> React
                 </span>
                 <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
                     <span class="text-purple-400">⬡</span> Tailwind CSS
-                </span>
-                <span class="flux-card rounded-xl px-4 py-2.5 text-sm mono text-gray-300 flex items-center gap-2">
-                    <span class="text-orange-400">⬡</span> ReadableStream API
                 </span>
             </div>
         </div>
@@ -488,7 +628,7 @@
                 <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"></div>
                 <div class="relative z-10">
                     <img src="https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_square.webp"
-                         alt="FluxTest" class="w-20 h-20 object-contain mx-auto mb-4">
+                         alt="FluxTest" class="w-24 h-24 object-contain mx-auto mb-4">
                     <h2 class="text-2xl sm:text-3xl font-light text-white mb-3">
                         Ready to test your <span class="gradient-text font-semibold">own server?</span>
                     </h2>
@@ -524,7 +664,7 @@
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs mono text-gray-600">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                    <span class="text-gray-400">FluxTest v0.1.1</span>
+                    <span class="text-gray-400">FluxTest v0.1.2</span>
                 </div>
                 <div class="flex items-center gap-4">
                     <a href="https://github.com/siddheshgunjal/flux-test" target="_blank" rel="noopener" class="hover:text-gray-300 transition-colors">GitHub</a>
