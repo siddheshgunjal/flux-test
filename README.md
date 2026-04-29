@@ -2,6 +2,20 @@
 
 ![FluxTest Logo](https://raw.githubusercontent.com/siddheshgunjal/flux-test/refs/heads/main/static/image/flux_logo_text.webp)
 
+<div align="center">
+
+![Tests](https://img.shields.io/github/actions/workflow/status/siddheshgunjal/flux-test/build-validation.yml?style=for-the-badge&logo=checkmarx&label=Tests)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/siddheshgunjal/flux-test/publish-to-docker.yml?style=for-the-badge&logo=docker&label=Build)
+[<img alt="Website" src="https://img.shields.io/website?url=https%3A%2F%2Fsiddheshgunjal.github.io%2Fflux-test%2F&style=for-the-badge&logo=htmx">][website]
+
+</div>
+
+<div align="center">
+    
+[<img alt="Docker - Version" src="https://img.shields.io/github/v/release/siddheshgunjal/flux-test?style=for-the-badge&logo=docker&label=docker%20pull%20ghcr.io%2Fsiddheshgunjal%2Fflux-test&labelColor=white&color=blue" width="600">][docker-image]
+
+</div>
+
 FluxTest is a self-hosted server network diagnosis application that measures:
 
 - Latency (round-trip time)
@@ -12,10 +26,7 @@ FluxTest is a self-hosted server network diagnosis application that measures:
 
 After each test, FluxTest generates an overall A–F network score with per-metric diagnosis and actionable recommendations. Results can be exported as a branded PNG report card.
 
-The app serves a browser UI and exposes HTTP endpoints for health checks and throughput testing between a client and your own hosted server.
-It is designed to run locally, in Docker.
-
-[<img alt="Static Badge" src="https://img.shields.io/badge/Watch%20Demo-click_to_watch-informational?style=for-the-badge&logo=youtube&logoColor=white&color=blue">][demo]
+https://github.com/user-attachments/assets/73e13b8b-066c-464d-b99e-011a62d68ae8
 
 ## Intended Use
 
@@ -31,12 +42,9 @@ It is not a public internet speed benchmark service and does not attempt to comp
 - **Time-based upload test**: browser streams random data to the server for a fixed 15 s window
 - **Connection Analysis**: A–F network score (0–100) with per-metric diagnosis and production-focused recommendations
 - **Shareable Report**: one-click PNG export of the full diagnosis card — ready to attach to a ticket or archive
-- Live progress rings, speed readout, and elapsed-time display for both tests
-- Guaranteed completion at any network speed — no timeout on slow connections
-- Health endpoint for monitoring and orchestration
 - Container-ready deployment with Gunicorn
 - Reverse proxy-friendly Docker Compose labels (Traefik example)
-- Designed for private deployments and self-hosted diagnostics
+- Designed for privacy
 
 ## Quick Start
 
@@ -44,27 +52,27 @@ It is not a public internet speed benchmark service and does not attempt to comp
 
 1. Create a file named docker-compose.yml:
 
-	```yml
-	services:
-		speedtest:
-			image: ghcr.io/siddheshgunjal/flux-test:latest
-			container_name: flux-test
-			ports:
-				- "4855:4855"
-			environment:
-				- SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
-			restart: unless-stopped
-			deploy:
-				resources:
-					reservations:
-						memory: 256M
-						cpus: 0.5
-			labels:
-				- "traefik.enable=true"
-				- "traefik.http.routers.speedtest.rule=Host(`speedtest.example.com`)"
-				- "traefik.http.routers.speedtest.entrypoints=websecure"
-				- "traefik.http.routers.speedtest.tls.certresolver=letsencrypt"
-	```
+    ```yml
+    services:
+      speedtest:
+        image: ghcr.io/siddheshgunjal/flux-test:latest
+        container_name: flux-test
+        ports:
+          - "4855:4855"
+        environment:
+          - SERVER_NAME=${SERVER_NAME:-${HOSTNAME:-speedtest-host}}
+        restart: unless-stopped
+        deploy:
+          resources:
+            reservations:
+              memory: 256M
+              cpus: 0.5
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.speedtest.rule=Host(`speedtest.example.com`)"
+          - "traefik.http.routers.speedtest.entrypoints=websecure"
+          - "traefik.http.routers.speedtest.tls.certresolver=letsencrypt"
+    ```
 
 2. Start:
 
@@ -81,8 +89,10 @@ It is not a public internet speed benchmark service and does not attempt to comp
 ### Option B: Docker run
 
 ```bash
-docker pull ghcr.io/siddheshgunjal/flux-test:latest
-docker run --rm -p 4855:4855 -e SERVER_NAME=${HOSTNAME} ghcr.io/siddheshgunjal/flux-test:latest
+docker run --rm \
+  -p 4855:4855 \
+  -e SERVER_NAME=${HOSTNAME} \
+  ghcr.io/siddheshgunjal/flux-test:latest
 ```
 
 Access the UI at: http://your-ip:4855
@@ -96,10 +106,10 @@ Access the UI at: http://your-ip:4855
 ├── Dockerfile              # Production container image build
 ├── docker-compose.yml      # Compose service definition
 ├── templates/
-│   └── index.html          # Frontend page
+│     └── index.html          # Frontend page
 └── static/
-		├── css/index.css       # UI styling and animations
-		└── js/index.js         # Client speed test logic
+      ├── css/index.css       # UI styling and animations
+      └── js/index.js         # Client speed test logic
 ```
 
 ## Local Development
@@ -143,7 +153,7 @@ docker compose up -d --build
 Stop:
 
 ```bash
-docker compose down -v
+docker compose down
 ```
 
 Access the UI at: http://your-ip:4855
@@ -190,10 +200,6 @@ You can adjust the test duration in `app.py` by editing `TEST_DURATION_SECONDS`.
 
 - **TLS Termination**: Run behind TLS termination (Traefik, Nginx, or cloud load balancer) to encrypt data in transit
 - **Environment Variables**: Sensitive configuration (e.g., `SERVER_NAME`) is handled via environment variables, not hardcoded
-- **Dependency Management**: Regular updates to Python dependencies and base container image recommended
-- **Version Pinning**: Use specific version tags (e.g., `v1.0.0`) for production deployments instead of `latest`
-- **Internal Use Only**: Designed as an internal/self-hosted diagnostics tool for private infrastructure—do not expose publicly on the internet
-
 
 #  Support
 If you get stuck, we’re here to help. The following are the best ways to get assistance working through your issue:
@@ -206,7 +212,7 @@ Contribution are the best way to keep `flux-test` amazing :muscle:
 Please cite flux-test in your publications if this is useful for your project/research. Here is an example BibTeX entry:
 ```BibTeX
 @misc{siddheshgunjal2026fluxtest,
-  title={flux-test: A self-hosted server network test application},
+  title={flux-test: A self-hosted server network diagnosis application},
   author={Siddhesh Gunjal},
   year={2026},
   howpublished={\url{https://github.com/siddheshgunjal/flux-test}},
@@ -219,4 +225,5 @@ Please cite flux-test in your publications if this is useful for your project/re
 [gh-issues]: https://github.com/siddheshgunjal/flux-test/issues
 [gh-contrib]: https://github.com/siddheshgunjal/flux-test/blob/main/CONTRIBUTING.md
 [portfolio]: https://siddheshgunjal.github.io
-[demo]: https://drive.google.com/file/d/1wUBIMy3lob654B6bx2i5B20lvt6TyD7J/view?usp=drive_link
+[docker-image]: https://github.com/siddheshgunjal/flux-test/pkgs/container/flux-test
+[website]: https://siddheshgunjal.github.io/flux-test
