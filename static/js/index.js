@@ -540,16 +540,23 @@ function setupTestLogic() {
                     bloatEl.textContent = '+' + delta.toFixed(0);
                 }
             }
-            if (!dlOnly) ulSpeed = await runUploadTest();
+            if (!dlOnly) {
+                nicDirection = 'rx';
+                ulSpeed = await runUploadTest();
+            }
 
             setStatus('Test Complete 👇🏼', 'green');
+            nicDirection = 'none';
             triggerCompletionEffect();
-            showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+            showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, finalizeServerStatsSummary(serverStatsSummary));
 
         } catch (e) {
             setStatus(`Error: ${e.message}`, 'red');
             console.error(e);
         } finally {
+            nicDirection = 'none';
+            statsAbortController.abort();
+            await statsLoopPromise;
             isTesting = false;
             disableButtons(false);
         }
