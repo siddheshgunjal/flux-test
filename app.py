@@ -3,12 +3,16 @@ import random
 import time
 import socket
 import os
+import psutil
+from threading import Lock
 
 app = Flask(__name__)
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 
 # Configuration
 TEST_DURATION_SECONDS = 15
+_NET_SAMPLE_LOCK = Lock()
+_LAST_NET_SAMPLE = None
 
 
 def get_server_name():
@@ -21,6 +25,28 @@ def _generate_chunks_for_duration(duration_seconds):
     end_time = time.time() + duration_seconds
     while time.time() < end_time:
         yield random.randbytes(chunk_size)
+
+
+def _sample_network_throughput_mbps():
+    """Return (tx_mbps, rx_mbps) computed from the delta since previous sample."""
+    global _LAST_NET_SAMPLE
+    now = time.time()
+    counters = psutil.net_io_counters()
+    sent = counters.bytes_sent
+    recv = counters.bytes_recv
+
+    with _NET_SAMPLE_LOCK:
+        if _LAST_NET_SAMPLE is None:
+            _LAST_NET_SAMPLE = (now, sent, recv)
+            return 0.0, 0.0
+
+        prev_now, prev_sent, prev_recv = _LAST_NET_SAMPLE
+        _LAST_NET_SAMPLE = (now, sent, recv)
+
+    elapsed = max(now - prev_now, 1e-6)
+    tx_mbps = max(0.0, ((sent - prev_sent) * 8) / elapsed / 1_000_000)
+    rx_mbps = max(0.0, ((recv - prev_recv) * 8) / elapsed / 1_000_000)
+    return tx_mbps, rx_mbps
 
 @ app.route('/')
 def index():
@@ -50,6 +76,27 @@ def bloat():
     """Latency probe used during active download to measure bufferbloat."""
     return jsonify({
         'ts': time.time()
+    })
+
+
+@app.route('/stats', methods=['GET'])
+def stats():
+    """Server resource snapshot so clients can identify server-side bottlenecks."""
+    mem = psutil.virtual_memory()
+    counters = psutil.net_io_counters()
+    tx_mbps, rx_mbps = _sample_network_throughput_mbps()
+
+    return jsonify({
+        'server': get_server_name(),
+        'timestamp': time.time(),
+        'cpu_percent': round(psutil.cpu_percent(interval=None), 1),
+        'memory_percent': round(mem.percent, 1),
+        'memory_used_mb': round(mem.used / (1024 * 1024), 1),
+        'memory_total_mb': round(mem.total / (1024 * 1024), 1),
+        'net_bytes_sent': counters.bytes_sent,
+        'net_bytes_recv': counters.bytes_recv,
+        'net_tx_mbps': round(tx_mbps, 2),
+        'net_rx_mbps': round(rx_mbps, 2),
     })
 
 @app.route('/download', methods=['GET'])
