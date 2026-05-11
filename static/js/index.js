@@ -938,7 +938,42 @@ function downloadResultCard() {
     link.click();
 }
 
-function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
+function buildThroughputAlignment(metricLabel, measuredMbps, nicAverageMbps, directionLabel) {
+    if (!(nicAverageMbps > 0) || !(measuredMbps > 0)) {
+        return {
+            color: '#6b7280',
+            verdict: 'No sample',
+            recommendation: `No ${directionLabel} sample was captured for ${metricLabel.toLowerCase()} analysis. Confirm the stats loop was running and that the selected interface accounts for this traffic.`,
+        };
+    }
+
+    const deltaMbps = Math.abs(nicAverageMbps - measuredMbps);
+    const relativeDelta = deltaMbps / Math.max(nicAverageMbps, measuredMbps);
+
+    if (relativeDelta <= 0.15) {
+        return {
+            color: '#22c55e',
+            verdict: `Aligned — ${nicAverageMbps.toFixed(1)} Mbps avg`,
+            recommendation: `${directionLabel} average throughput closely matched the measured ${metricLabel.toLowerCase()} result. The server-side counter and application-level result are consistent within ${(relativeDelta * 100).toFixed(0)}%.`,
+        };
+    }
+
+    if (relativeDelta <= 0.35) {
+        return {
+            color: '#f9ad16',
+            verdict: `Offset — ${nicAverageMbps.toFixed(1)} Mbps avg`,
+            recommendation: `${directionLabel} average throughput differed from the measured ${metricLabel.toLowerCase()} result by ${deltaMbps.toFixed(1)} Mbps (${(relativeDelta * 100).toFixed(0)}%). This suggests some overhead, proxying, or interface-accounting differences.`,
+        };
+    }
+
+    return {
+        color: '#ef4444',
+        verdict: `Mismatch — ${nicAverageMbps.toFixed(1)} Mbps avg`,
+        recommendation: `${directionLabel} average throughput differed sharply from the measured ${metricLabel.toLowerCase()} result by ${deltaMbps.toFixed(1)} Mbps (${(relativeDelta * 100).toFixed(0)}%). The reported test speed and NIC counters are not closely matched, so a proxy, tunnel, alternate interface, or measurement-path discrepancy is likely involved.`,
+    };
+}
+
+function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary = createEmptyServerStatsSummary()) {
     const items = [];
 
     // ── Latency ───────────────────────────────────────────────────────
@@ -1042,6 +1077,57 @@ function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
         bbRec = 'Extreme buffer bloat — latency balloons under load. VoIP, gaming, and real-time APIs become unusable during transfers. SQM/fq_codel is essential. Consider hardware with better queue management.';
     }
     items.push({ metric: 'Bloat', icon: '🫧', bgColor: 'rgba(249,115,22,0.12)', color: bbColor, verdict: bbVerdict, recommendation: bbRec });
+
+    // ── Server CPU ───────────────────────────────────────────────────
+    const cpuPeak = serverStatsSummary.cpuPeak || 0;
+    let cpuColor, cpuVerdict, cpuRec;
+    if (cpuPeak < 60) {
+        cpuColor = '#22c55e';
+        cpuVerdict = `Healthy — ${cpuPeak.toFixed(1)} % peak`;
+        cpuRec = 'The server retained CPU headroom during the test. Application workers are unlikely to be the bottleneck at the measured traffic level.';
+    } else if (cpuPeak < 85) {
+        cpuColor = '#f9ad16';
+        cpuVerdict = `Elevated — ${cpuPeak.toFixed(1)} % peak`;
+        cpuRec = 'CPU utilisation climbed noticeably during the test. This is acceptable for bursts, but sustained traffic may begin to impact latency and throughput.';
+    } else {
+        cpuColor = '#ef4444';
+        cpuVerdict = `Saturated — ${cpuPeak.toFixed(1)} % peak`;
+        cpuRec = 'Server CPU approached saturation during the test, so measured results may be constrained by compute rather than network quality. Increase worker capacity or optimize request handling.';
+    }
+    items.push({ metric: 'Server CPU', icon: '⚙', bgColor: 'rgba(34,197,94,0.12)', color: cpuColor, verdict: cpuVerdict, recommendation: cpuRec });
+
+    // ── Server Memory ────────────────────────────────────────────────
+    const memoryPeak = serverStatsSummary.memoryPeak || 0;
+    let memColor, memVerdict, memRec;
+    if (memoryPeak < 70) {
+        memColor = '#22c55e';
+        memVerdict = `Healthy — ${memoryPeak.toFixed(1)} % peak`;
+        memRec = 'Memory pressure remained low, so the server likely had sufficient RAM available throughout the test window.';
+    } else if (memoryPeak < 90) {
+        memColor = '#f9ad16';
+        memVerdict = `Tight — ${memoryPeak.toFixed(1)} % peak`;
+        memRec = 'Memory usage is getting high enough that burst traffic could increase GC pressure or trigger reclaim. Monitor resident set size and concurrent worker counts.';
+    } else {
+        memColor = '#ef4444';
+        memVerdict = `Critical — ${memoryPeak.toFixed(1)} % peak`;
+        memRec = 'Server memory was close to exhaustion during the test, which can distort network results via swapping or aggressive reclaim. Add RAM or reduce process footprint.';
+    }
+    items.push({ metric: 'Server Memory', icon: '🧠', bgColor: 'rgba(168,85,247,0.12)', color: memColor, verdict: memVerdict, recommendation: memRec });
+
+    // ── Server TX / RX ───────────────────────────────────────────────
+    const txAvg = serverStatsSummary.txAvg || 0;
+    const txAnalysis = buildThroughputAlignment('Download', dlSpeed, txAvg, 'Server NIC transmit');
+    const txColor = txAnalysis.color;
+    const txVerdict = txAnalysis.verdict;
+    const txRec = txAnalysis.recommendation;
+    items.push({ metric: 'Server TX', icon: '⇢', bgColor: 'rgba(6,182,212,0.12)', color: txColor, verdict: txVerdict, recommendation: txRec });
+
+    const rxAvg = serverStatsSummary.rxAvg || 0;
+    const rxAnalysis = buildThroughputAlignment('Upload', ulSpeed, rxAvg, 'Server NIC receive');
+    const rxColor = rxAnalysis.color;
+    const rxVerdict = rxAnalysis.verdict;
+    const rxRec = rxAnalysis.recommendation;
+    items.push({ metric: 'Server RX', icon: '⇠', bgColor: 'rgba(249,115,22,0.12)', color: rxColor, verdict: rxVerdict, recommendation: rxRec });
 
     return items;
 }
