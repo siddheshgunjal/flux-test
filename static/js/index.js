@@ -9,6 +9,129 @@ document.addEventListener('DOMContentLoaded', () => {
 const TEST_DURATION_SECONDS = 15;
 const MAX_SPEED_MBPS        = 5000;
 
+function _sleepWithAbort(ms, abortSignal) {
+    return new Promise((resolve) => {
+        if (abortSignal?.aborted) {
+            resolve();
+            return;
+        }
+        const timer = setTimeout(resolve, ms);
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                clearTimeout(timer);
+                resolve();
+            }, { once: true });
+        }
+    });
+}
+
+function setServerStatsUnavailable() {
+    const cpu = document.getElementById('stat-cpu');
+    const mem = document.getElementById('stat-mem');
+    const tx = document.getElementById('stat-net-tx');
+    const rx = document.getElementById('stat-net-rx');
+    if (cpu) cpu.textContent = '-- %';
+    if (mem) mem.textContent = '-- %';
+    if (tx) tx.textContent = '-- Mbps';
+    if (rx) rx.textContent = '-- Mbps';
+}
+
+function createEmptyServerStatsSummary() {
+    return {
+        cpuPeak: 0,
+        memoryPeak: 0,
+        txPeak: 0,
+        rxPeak: 0,
+        txAvg: 0,
+        rxAvg: 0,
+        txStartBytes: null,
+        txEndBytes: null,
+        txStartTs: null,
+        txEndTs: null,
+        rxStartBytes: null,
+        rxEndBytes: null,
+        rxStartTs: null,
+        rxEndTs: null,
+    };
+}
+
+function updatePhaseAverage(summary, prefix, bytes, timestamp) {
+    const startBytesKey = `${prefix}StartBytes`;
+    const endBytesKey = `${prefix}EndBytes`;
+    const startTsKey = `${prefix}StartTs`;
+    const endTsKey = `${prefix}EndTs`;
+
+    if (summary[startBytesKey] === null) {
+        summary[startBytesKey] = bytes;
+        summary[startTsKey] = timestamp;
+    }
+
+    summary[endBytesKey] = bytes;
+    summary[endTsKey] = timestamp;
+}
+
+function computeAverageMbps(startBytes, endBytes, startTs, endTs) {
+    if (
+        startBytes === null ||
+        endBytes === null ||
+        startTs === null ||
+        endTs === null ||
+        endTs <= startTs ||
+        endBytes < startBytes
+    ) {
+        return 0;
+    }
+
+    return ((endBytes - startBytes) * 8) / ((endTs - startTs) * 1_000_000);
+}
+
+function finalizeServerStatsSummary(summary) {
+    return {
+        cpuPeak: summary.cpuPeak,
+        memoryPeak: summary.memoryPeak,
+        txPeak: summary.txPeak,
+        rxPeak: summary.rxPeak,
+        txAvg: computeAverageMbps(summary.txStartBytes, summary.txEndBytes, summary.txStartTs, summary.txEndTs),
+        rxAvg: computeAverageMbps(summary.rxStartBytes, summary.rxEndBytes, summary.rxStartTs, summary.rxEndTs),
+    };
+}
+
+function renderServerStats(stats, nicDirection = 'none') {
+    const cpu = document.getElementById('stat-cpu');
+    const mem = document.getElementById('stat-mem');
+    const tx = document.getElementById('stat-net-tx');
+    const rx = document.getElementById('stat-net-rx');
+    if (cpu) cpu.textContent = `${Number(stats.cpu_percent || 0).toFixed(1)} %`;
+    if (mem) mem.textContent = `${Number(stats.memory_percent || 0).toFixed(1)} %`;
+
+    if (nicDirection === 'tx') {
+        if (tx) tx.textContent = `${Number(stats.net_tx_mbps || 0).toFixed(2)} Mbps`;
+        if (rx) rx.textContent = '-- Mbps';
+    } else if (nicDirection === 'rx') {
+        // Keep the last TX sample from download visible during upload.
+        if (rx) rx.textContent = `${Number(stats.net_rx_mbps || 0).toFixed(2)} Mbps`;
+    } else {
+        if (tx) tx.textContent = '-- Mbps';
+        if (rx) rx.textContent = '-- Mbps';
+    }
+}
+
+async function runServerStatsLoop(abortSignal, getNicDirection, onSample) {
+    while (!abortSignal.aborted) {
+        try {
+            const res = await fetch('/stats', { cache: 'no-store', signal: abortSignal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const stats = await res.json();
+            const nicDirection = getNicDirection();
+            renderServerStats(stats, nicDirection);
+            if (onSample) onSample(stats, nicDirection);
+        } catch (_) {
+            if (!abortSignal.aborted) setServerStatsUnavailable();
+        }
+        await _sleepWithAbort(1000, abortSignal);
+    }
+}
+
 // ── Server info ───────────────────────────────────────────────────────
 async function fetchSystemInfo() {
     try {
@@ -31,6 +154,13 @@ async function fetchSystemInfo() {
             healthSt.classList.remove('bg-red-500');
             healthSt.classList.add('bg-green-500');
         }
+
+        try {
+            const stats = await fetch('/stats', { cache: 'no-store' }).then(r => r.json());
+            renderServerStats(stats, 'none');
+        } catch (_) {
+            setServerStatsUnavailable();
+        }
     } catch (e) {
         console.error('fetchSystemInfo:', e);
         document.getElementById('server-name').textContent = 'unreachable';
@@ -43,6 +173,7 @@ async function fetchSystemInfo() {
             healthSt.classList.remove('bg-green-500');
             healthSt.classList.add('bg-red-500');
         }
+        setServerStatsUnavailable();
     }
 }
 
@@ -175,7 +306,7 @@ async function _bloatProbeLoop(abortSignal) {
             samples.push(performance.now() - t0);
         } catch (_) { break; }
         // Wait ~1 s between probes (skip if aborted)
-        await new Promise(r => { const id = setTimeout(r, 1000); abortSignal.addEventListener('abort', () => { clearTimeout(id); r(); }, { once: true }); });
+        await _sleepWithAbort(1000, abortSignal);
     }
     if (samples.length === 0) return null;
     return samples.reduce((a, b) => a + b, 0) / samples.length;
@@ -353,10 +484,29 @@ function runUploadTest() {
 // ── Test orchestration ────────────────────────────────────────────────
 function setupTestLogic() {
     let isTesting = false;
+    let nicDirection = 'none';
 
     async function run(dlOnly, ulOnly) {
         if (isTesting) return;
         isTesting = true;
+        const statsAbortController = new AbortController();
+        const serverStatsSummary = createEmptyServerStatsSummary();
+        const statsLoopPromise = runServerStatsLoop(
+            statsAbortController.signal,
+            () => nicDirection,
+            (stats, direction) => {
+                const timestamp = Number(stats.timestamp || 0);
+                serverStatsSummary.cpuPeak = Math.max(serverStatsSummary.cpuPeak, Number(stats.cpu_percent || 0));
+                serverStatsSummary.memoryPeak = Math.max(serverStatsSummary.memoryPeak, Number(stats.memory_percent || 0));
+                if (direction === 'tx') {
+                    serverStatsSummary.txPeak = Math.max(serverStatsSummary.txPeak, Number(stats.net_tx_mbps || 0));
+                    updatePhaseAverage(serverStatsSummary, 'tx', Number(stats.net_bytes_sent || 0), timestamp);
+                } else if (direction === 'rx') {
+                    serverStatsSummary.rxPeak = Math.max(serverStatsSummary.rxPeak, Number(stats.net_rx_mbps || 0));
+                    updatePhaseAverage(serverStatsSummary, 'rx', Number(stats.net_bytes_recv || 0), timestamp);
+                }
+            }
+        );
         disableButtons(true);
         [document.getElementById('dl-card'), document.getElementById('ul-card')].forEach((card) => {
             if (card) card.classList.remove('complete-glow');
@@ -371,6 +521,7 @@ function setupTestLogic() {
         try {
             // Always measure latency first
             setStatus('Measuring latency…', 'cyan');
+            nicDirection = 'none';
             const latResult = await measureLatency();
             latencyMs = latResult.avg;
             jitterMs  = latResult.jitter;
@@ -378,6 +529,7 @@ function setupTestLogic() {
             document.getElementById('jitter-value').textContent = jitterMs.toFixed(1);
 
             if (!ulOnly) {
+                nicDirection = 'tx';
                 const dlResult = await runDownloadTest();
                 dlSpeed = dlResult.speed;
                 bloatMs = dlResult.bloatMs;
@@ -404,6 +556,20 @@ function setupTestLogic() {
     }
 
     document.getElementById('start-all-btn').addEventListener('click', () => run(false, false));
+}
+
+function computeThroughputRelativeDelta(measuredMbps, nicAverageMbps) {
+    if (!(nicAverageMbps > 0) || !(measuredMbps > 0)) return null;
+    return Math.abs(nicAverageMbps - measuredMbps) / Math.max(nicAverageMbps, measuredMbps);
+}
+
+function scoreThroughputAlignment(measuredMbps, nicAverageMbps, maxPoints) {
+    const relativeDelta = computeThroughputRelativeDelta(measuredMbps, nicAverageMbps);
+    if (relativeDelta === null) return maxPoints * 0.5; // neutral when no sample
+    if (relativeDelta <= 0.15) return maxPoints;
+    if (relativeDelta <= 0.35) return maxPoints * 0.65;
+    if (relativeDelta <= 0.6) return maxPoints * 0.3;
+    return maxPoints * 0.1;
 }
 
 // ── Network score ─────────────────────────────────────────────────────
@@ -450,13 +616,13 @@ function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
 }
 
 // ── Diagnosis / recommendations ───────────────────────────────────────
-function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
+function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary = createEmptyServerStatsSummary()) {
     const panel     = document.getElementById('diagnosis-panel');
     const container = document.getElementById('diagnosis-items');
     if (!panel || !container) return;
 
     // Populate score banner
-    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary);
     const scoreNum   = document.getElementById('score-number');
     const scoreGrade = document.getElementById('score-grade');
     const scoreLabel = document.getElementById('score-label');
@@ -473,11 +639,17 @@ function showDiagnosis(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
     panel.dataset.dlSpeed  = dlSpeed;
     panel.dataset.ulSpeed  = ulSpeed;
     panel.dataset.bloat    = bloatMs != null ? bloatMs : '';
+    panel.dataset.cpuPeak  = serverStatsSummary.cpuPeak;
+    panel.dataset.memoryPeak = serverStatsSummary.memoryPeak;
+    panel.dataset.txPeak   = serverStatsSummary.txPeak;
+    panel.dataset.rxPeak   = serverStatsSummary.rxPeak;
+    panel.dataset.txAvg    = serverStatsSummary.txAvg;
+    panel.dataset.rxAvg    = serverStatsSummary.rxAvg;
     panel.dataset.server   = serverName;
     panel.dataset.ready    = '1';
 
     container.innerHTML = '';
-    const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+    const items = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary);
 
     items.forEach((item, idx) => {
         const el = document.createElement('div');
