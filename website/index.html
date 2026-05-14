@@ -333,7 +333,7 @@
                                     <span class="text-xs mono text-gray-500 uppercase tracking-wider">Latency</span>
                                     <span class="text-sm font-semibold" style="color:#22c55e">Excellent — 4 ms</span>
                                 </div>
-                                <p class="text-[10px] text-gray-500 leading-relaxed">Exceptional TTFB. Ideal for latency-sensitive APIs and real-time dashboards.</p>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Exceptional RTT for latency-sensitive workloads and real-time APIs.</p>
                             </div>
                         </div>
                         <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
@@ -345,7 +345,7 @@
                                     <span class="text-xs mono text-gray-500 uppercase tracking-wider">Jitter</span>
                                     <span class="text-sm font-semibold" style="color:#22c55e">Stable — 0.2 ms</span>
                                 </div>
-                                <p class="text-[10px] text-gray-500 leading-relaxed">Highly consistent response times. Reliable for WebSocket connections, real-time collaboration features.</p>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Consistent timing for VoIP, WebSockets, and collaborative apps.</p>
                             </div>
                         </div>
                         <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
@@ -357,10 +357,10 @@
                                     <span class="text-xs mono text-gray-500 uppercase tracking-wider">Download</span>
                                     <span class="text-sm font-semibold" style="color:#22c55e">Excellent — 102 Mbps</span>
                                 </div>
-                                <p class="text-[10px] text-gray-500 leading-relaxed">Ample ingress. Static assets and streaming payloads served without bottleneck.</p>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Strong ingress capacity with low packet-delay side effects.</p>
                             </div>
                         </div>
-                        <div class="flex items-start gap-2.5 py-2">
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
                                 <span class="text-xl">↑</span>
                             </div>
@@ -369,9 +369,10 @@
                                     <span class="text-xs mono text-gray-500 uppercase tracking-wider">Upload</span>
                                     <span class="text-sm font-semibold" style="color:#22c55e">Good — 45 Mbps</span>
                                 </div>
-                                <p class="text-[10px] text-gray-500 leading-relaxed">Sufficient egress for most workloads. Monitor under concurrent heavy upload.</p>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Reliable egress for backups, commits, and replication jobs.</p>
                             </div>
-                        </div>                        <div class="flex items-start gap-2.5 py-2 border-t border-white/5">
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(249,115,22,0.12)">
                                 <span class="text-sm">🫧</span>
                             </div>
@@ -380,9 +381,58 @@
                                     <span class="text-[10px] mono text-gray-500 uppercase tracking-wider">Bloat</span>
                                     <span class="text-xs font-semibold" style="color:#22c55e">Minimal — +3 ms</span>
                                 </div>
-                                <p class="text-[10px] text-gray-500 leading-relaxed">Negligible latency increase under load. Your network has proper queue management.</p>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Queueing stays controlled when download load ramps up.</p>
                             </div>
-                        </div>                    </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-sm">🖥</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-[10px] mono text-gray-500 uppercase tracking-wider">CPU</span>
+                                    <span class="text-xs font-semibold" style="color:#22c55e">Healthy — 34%</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Server CPU headroom indicates throughput is not CPU-capped.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-sm">💾</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-[10px] mono text-gray-500 uppercase tracking-wider">Memory</span>
+                                    <span class="text-xs font-semibold" style="color:#22c55e">Healthy — 48%</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Memory usage remains stable during both transfer phases.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2 border-b border-white/5">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-sm">⇢</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-[10px] mono text-gray-500 uppercase tracking-wider">NIC TX Avg</span>
+                                    <span class="text-xs font-semibold" style="color:#22c55e">Aligned — 101 Mbps</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Download throughput aligns with measured server transmit average.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2.5 py-2">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(34,197,94,0.12)">
+                                <span class="text-sm">⇠</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-0.5">
+                                    <span class="text-[10px] mono text-gray-500 uppercase tracking-wider">NIC RX Avg</span>
+                                    <span class="text-xs font-semibold" style="color:#22c55e">Aligned — 44 Mbps</span>
+                                </div>
+                                <p class="text-[10px] text-gray-500 leading-relaxed">Upload phase uses RX averages for accurate direction-aware analysis.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- bottom glow line -->
@@ -409,8 +459,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
                     </div>
-                    <h3 class="text-base font-semibold text-white mb-1.5">Real-Time Progress</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">Live speed rings, Mbps readout, elapsed timer, and byte counter updating at the display's native frame rate.</p>
+                    <h3 class="text-base font-semibold text-white mb-1.5">Live Network + Server Telemetry</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Track download/upload rings alongside live server CPU, memory, and NIC TX/RX during each test phase.</p>
                 </div>
 
                 <!-- Feature 2 -->
@@ -464,8 +514,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
                     </div>
-                    <h3 class="text-base font-semibold text-white mb-1.5">Connection Analysis &amp; Report</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">After every test, an A–F network score and per-metric diagnosis with actionable insights. Hit <span class="text-gray-300 mono text-xs">Save Report</span> to export a ready to attach to a ticket or document a baseline.</p>
+                    <h3 class="text-base font-semibold text-white mb-1.5">9-Metric Analysis &amp; Stable Export</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">Scores now combine latency, jitter, throughput, bloat, CPU, memory, and NIC alignment. Save a fixed-width 640px report with dynamic height for consistent sharing across devices.</p>
                 </div>
 
             </div>
@@ -506,8 +556,8 @@
                 <!-- Step 4 -->
                 <div class="flux-card rounded-2xl p-5 text-center reveal" style="transition-delay:0.3s">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-4 text-cyan-400 font-bold mono text-lg">4</div>
-                    <h3 class="text-base font-semibold text-white mb-2">Report</h3>
-                    <p class="text-sm text-gray-400 leading-relaxed">Every metric is scored A–F and accompanied by a production-focused recommendation. Hit <code class="text-cyan-300">Save Report</code> to export a branded PNG you can share or archive.</p>
+                    <h3 class="text-base font-semibold text-white mb-2">System-Aware Score &amp; Export</h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">A weighted 9-metric model combines network quality with CPU, memory, and phase-average NIC alignment. Save Report exports a stable 640px PNG with dynamic height.</p>
                 </div>
 
             </div>
@@ -633,8 +683,9 @@
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Diagnosing bandwidth bottlenecks on Tunnels or Proxies</li>
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Checking edge node connectivity in private clouds</li>
                         <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Verifying network after Docker/K8s deployments</li>
-                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Getting a connection score with per-metric production recommendations</li>
-                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Exporting a report card to document and share network baselines</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Correlating app throughput with live CPU, memory, and NIC TX/RX averages</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Getting a weighted connection score with production-ready recommendations</li>
+                        <li class="flex items-start gap-2"><span class="text-cyan-400 mt-0.5">·</span> Exporting consistent fixed-width report cards to document baselines</li>
                     </ul>
                 </div>
                 <div class="flux-card rounded-2xl p-6 reveal" style="transition-delay:0.1s">
