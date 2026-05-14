@@ -1130,7 +1130,7 @@ function buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, ser
         cpuVerdict = `Saturated — ${cpuPeak.toFixed(1)} % peak`;
         cpuRec = 'Server CPU approached saturation during the test, so measured results may be constrained by compute rather than network quality. Increase worker capacity or optimize request handling.';
     }
-    items.push({ metric: 'Server CPU', icon: '⚙', bgColor: 'rgba(34,197,94,0.12)', color: cpuColor, verdict: cpuVerdict, recommendation: cpuRec });
+    items.push({ metric: 'Server CPU', icon: '🖥️', bgColor: 'rgba(34,197,94,0.12)', color: cpuColor, verdict: cpuVerdict, recommendation: cpuRec });
 
     // ── Server Memory ────────────────────────────────────────────────
     const memoryPeak = serverStatsSummary.memoryPeak || 0;
