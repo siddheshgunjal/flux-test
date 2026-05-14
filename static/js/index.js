@@ -580,37 +580,54 @@ function scoreThroughputAlignment(measuredMbps, nicAverageMbps, maxPoints) {
 }
 
 // ── Network score ─────────────────────────────────────────────────────
-function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs) {
-    // 5 metrics × 20 points each → max 100
-    let latPts, jitPts, dlPts, ulPts, bloatPts;
+function computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary = createEmptyServerStatsSummary()) {
+    // Weighted scoring (max 100): core network quality = 70, server/system bottlenecks = 30.
+    const NET_W = 14;
+    const SYS_W = 7.5;
+    let latPts, jitPts, dlPts, ulPts, bloatPts, cpuPts, memPts;
 
-    if (latencyMs < 20)       latPts = 20;
-    else if (latencyMs < 60)  latPts = 16;
-    else if (latencyMs < 150) latPts = 8;
-    else                       latPts = 2;
+    if (latencyMs < 20)       latPts = NET_W;
+    else if (latencyMs < 60)  latPts = NET_W * 0.8;
+    else if (latencyMs < 150) latPts = NET_W * 0.45;
+    else                       latPts = NET_W * 0.1;
 
-    if (jitterMs < 5)         jitPts = 20;
-    else if (jitterMs < 20)   jitPts = 12;
-    else                       jitPts = 2;
+    if (jitterMs < 5)         jitPts = NET_W;
+    else if (jitterMs < 20)   jitPts = NET_W * 0.6;
+    else                       jitPts = NET_W * 0.1;
 
-    if (dlSpeed >= 100)       dlPts = 20;
-    else if (dlSpeed >= 25)   dlPts = 16;
-    else if (dlSpeed >= 10)   dlPts = 10;
-    else                       dlPts = 2;
+    if (dlSpeed >= 100)       dlPts = NET_W;
+    else if (dlSpeed >= 25)   dlPts = NET_W * 0.8;
+    else if (dlSpeed >= 10)   dlPts = NET_W * 0.5;
+    else                       dlPts = NET_W * 0.1;
 
-    if (ulSpeed >= 20)        ulPts = 20;
-    else if (ulSpeed >= 5)    ulPts = 12;
-    else                       ulPts = 2;
+    if (ulSpeed >= 20)        ulPts = NET_W;
+    else if (ulSpeed >= 5)    ulPts = NET_W * 0.6;
+    else                       ulPts = NET_W * 0.1;
 
     // Bufferbloat: delta = loaded RTT - idle RTT
     const bloatDelta = (bloatMs != null && latencyMs != null) ? Math.max(0, bloatMs - latencyMs) : null;
-    if (bloatDelta === null)       bloatPts = 10;  // no data — neutral
-    else if (bloatDelta < 15)      bloatPts = 20;
-    else if (bloatDelta < 50)      bloatPts = 14;
-    else if (bloatDelta < 150)     bloatPts = 6;
-    else                            bloatPts = 2;
+    if (bloatDelta === null)       bloatPts = NET_W * 0.5;
+    else if (bloatDelta < 15)      bloatPts = NET_W;
+    else if (bloatDelta < 50)      bloatPts = NET_W * 0.7;
+    else if (bloatDelta < 150)     bloatPts = NET_W * 0.3;
+    else                            bloatPts = NET_W * 0.1;
 
-    const score = latPts + jitPts + dlPts + ulPts + bloatPts;
+    const cpuPeak = serverStatsSummary.cpuPeak || 0;
+    if (cpuPeak < 60)         cpuPts = SYS_W;
+    else if (cpuPeak < 80)    cpuPts = SYS_W * 0.75;
+    else if (cpuPeak < 90)    cpuPts = SYS_W * 0.35;
+    else                       cpuPts = SYS_W * 0.1;
+
+    const memoryPeak = serverStatsSummary.memoryPeak || 0;
+    if (memoryPeak < 70)       memPts = SYS_W;
+    else if (memoryPeak < 85)  memPts = SYS_W * 0.75;
+    else if (memoryPeak < 95)  memPts = SYS_W * 0.3;
+    else                        memPts = SYS_W * 0.1;
+
+    const txPts = scoreThroughputAlignment(dlSpeed, serverStatsSummary.txAvg || 0, SYS_W);
+    const rxPts = scoreThroughputAlignment(ulSpeed, serverStatsSummary.rxAvg || 0, SYS_W);
+
+    const score = Math.round(latPts + jitPts + dlPts + ulPts + bloatPts + cpuPts + memPts + txPts + rxPts);
 
     let grade, label, color;
     if (score >= 90)      { grade = 'A'; label = ' - Exceptional';  color = '#22c55e'; }
