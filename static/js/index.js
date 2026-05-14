@@ -741,14 +741,26 @@ function downloadResultCard() {
     const dlSpeed    = parseFloat(panel.dataset.dlSpeed)  || 0;
     const ulSpeed    = parseFloat(panel.dataset.ulSpeed)  || 0;
     const bloatMs    = panel.dataset.bloat !== '' ? parseFloat(panel.dataset.bloat) : null;
+    const serverStatsSummary = {
+        cpuPeak: parseFloat(panel.dataset.cpuPeak) || 0,
+        memoryPeak: parseFloat(panel.dataset.memoryPeak) || 0,
+        txPeak: parseFloat(panel.dataset.txPeak) || 0,
+        rxPeak: parseFloat(panel.dataset.rxPeak) || 0,
+        txAvg: parseFloat(panel.dataset.txAvg) || 0,
+        rxAvg: parseFloat(panel.dataset.rxAvg) || 0,
+    };
     const serverName = panel.dataset.server || 'Server';
 
-    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+    const { score, grade, label, color } = computeNetworkScore(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary);
     const gradeLabel = label.replace(/^ - /, '');
-    const diagItems  = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs);
+    const diagItems  = buildDiagnosisItems(latencyMs, jitterMs, dlSpeed, ulSpeed, bloatMs, serverStatsSummary);
 
-    // Single-column card matching the Diagnosis panel layout
-    const W = 640, H = 800, DPR = 2;
+    // Fixed width (640px) with dynamic height based on number of items
+    const W = 640;
+    const BASELINE_ITEM_HEIGHT = 102;  // height per diagnosis item
+    const FIXED_CONTENT_HEIGHT = 292;  // header + score section + separators + footer
+    const H = FIXED_CONTENT_HEIGHT + diagItems.length * BASELINE_ITEM_HEIGHT;
+    const DPR = 2;
     const PAD = 24;
 
     const canvas = document.createElement('canvas');
