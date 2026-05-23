@@ -1044,6 +1044,12 @@
   .py-20 {
     padding-block: calc(var(--spacing) * 20);
   }
+  .ps-2 {
+    padding-inline-start: calc(var(--spacing) * 2);
+  }
+  .pe-2 {
+    padding-inline-end: calc(var(--spacing) * 2);
+  }
   .pt-2 {
     padding-top: calc(var(--spacing) * 2);
   }
