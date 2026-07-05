@@ -3,19 +3,44 @@
   const label = document.getElementById("version-label");
   if (!label) return;
 
+  const CACHE_KEY = "flux-test-version";
+  const CACHE_TTL_MS = 3_600_000; // 1 hour
+
+  // ── Check cache first ─────────────────────────────────────────────────
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { version, ts } = JSON.parse(cached);
+      if (Date.now() - ts < CACHE_TTL_MS) {
+        label.textContent = version;
+        return;
+      }
+    }
+  } catch {
+    // Corrupted cache entry — ignore and re-fetch.
+  }
+
+  // ── Fetch from GitHub ─────────────────────────────────────────────────
   try {
     const res = await fetch(
       "https://api.github.com/repos/siddheshgunjal/flux-test/releases/latest",
     );
     if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
     const data = await res.json();
-    if (data.tag_name) {
-      label.textContent = data.tag_name;
-    } else {
-      label.textContent = "?";
+    const version = data.tag_name || "?";
+    label.textContent = version;
+
+    // ── Persist to cache ────────────────────────────────────────────────
+    try {
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ version, ts: Date.now() }),
+      );
+    } catch {
+      // localStorage full or disabled — not critical.
     }
   } catch {
-    // Silently keep the "—" placeholder on network/rate-limit errors.
+    // Keep the "—" placeholder on network/rate-limit errors.
   }
 })();
 
