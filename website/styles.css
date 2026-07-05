@@ -1,20 +1,37 @@
-*, *::before, *::after { box-sizing: border-box; }
+@import "tailwindcss";
+@source "./*.html";
+@source "./script.js";
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
 
 body {
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family:
+        "Inter",
+        -apple-system,
+        sans-serif;
     background-color: #0a0a0a;
     color: #e5e7eb;
     overflow-x: hidden;
 }
 
-code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+code,
+pre,
+.mono {
+    font-family: "JetBrains Mono", monospace;
+}
 
 /* ── Animated mesh background ── */
 .flux-mesh-bg {
-    background: linear-gradient(135deg,
-        rgba(6,182,212,0.06) 0%,
-        rgba(99,102,241,0.06) 50%,
-        rgba(255,255,255,0.02) 100%);
+    background: linear-gradient(
+        135deg,
+        rgba(6, 182, 212, 0.06) 0%,
+        rgba(99, 102, 241, 0.06) 50%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
     background-size: 200% 200%;
     animation: meshMove 15s ease-in-out infinite alternate;
     position: fixed;
@@ -24,8 +41,12 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
 }
 
 @keyframes meshMove {
-    0%   { background-position: 0% 0%; }
-    100% { background-position: 100% 100%; }
+    0% {
+        background-position: 0% 0%;
+    }
+    100% {
+        background-position: 100% 100%;
+    }
 }
 
 /* ── Particles ── */
@@ -38,24 +59,26 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
 
 /* ── Glass card ── */
 .flux-card {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.08);
-    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .flux-card:hover {
     transform: translateY(-3px);
-    border-color: rgba(6,182,212,0.3);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.25), 0 0 30px rgba(6,182,212,0.07);
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.25),
+        0 0 30px rgba(6, 182, 212, 0.07);
 }
 
 /* ── Nav ── */
 .flux-nav {
-    background: rgba(10,10,10,0.8);
+    background: rgba(10, 10, 10, 0.8);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 /* ── Hero ring mockup ── */
@@ -65,7 +88,9 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
     align-items: center;
     justify-content: center;
 }
-.ring-mockup svg { transform: rotate(-90deg); }
+.ring-mockup svg {
+    transform: rotate(-90deg);
+}
 .ring-label-mock {
     position: absolute;
     inset: 0;
@@ -77,20 +102,24 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
 
 /* ── Code block ── */
 .code-block {
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     overflow: hidden;
 }
 .code-block-header {
-    background: rgba(255,255,255,0.04);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     padding: 0.5rem 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
-.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
 
 /* ── Gradient text ── */
 .gradient-text {
@@ -102,50 +131,65 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
 
 /* ── Shimmer button ── */
 .btn-primary {
-    background: linear-gradient(135deg, rgba(6,182,212,0.2), rgba(99,102,241,0.2));
-    border: 1px solid rgba(255,255,255,0.15);
+    background: linear-gradient(
+        135deg,
+        rgba(6, 182, 212, 0.2),
+        rgba(99, 102, 241, 0.2)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
 }
 .btn-primary::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.08),
+        transparent
+    );
     background-size: 200% 100%;
     animation: shimmer 3s ease-in-out infinite;
     pointer-events: none;
 }
 .btn-primary:hover {
-    border-color: rgba(6,182,212,0.5);
-    box-shadow: 0 0 20px rgba(6,182,212,0.2);
+    border-color: rgba(6, 182, 212, 0.5);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
     transform: translateY(-1px);
 }
 
 .btn-secondary {
     background: transparent;
-    border: 1px solid rgba(255,255,255,0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     color: #d1d5db;
     transition: all 0.3s ease;
 }
 .btn-secondary:hover {
-    border-color: rgba(255,255,255,0.3);
+    border-color: rgba(255, 255, 255, 0.3);
     color: #fff;
     transform: translateY(-1px);
 }
 
 @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position:  200% 0; }
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }
 
 /* ── Section fade-in ── */
 .reveal {
     opacity: 0;
     transform: translateY(28px);
-    transition: opacity 0.65s ease, transform 0.65s ease;
+    transition:
+        opacity 0.65s ease,
+        transform 0.65s ease;
 }
 .reveal.visible {
     opacity: 1;
@@ -159,51 +203,97 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
     left: calc(50% + 28px);
     right: calc(-50% + 28px);
     height: 1px;
-    background: linear-gradient(90deg, rgba(6,182,212,0.4), rgba(99,102,241,0.1));
+    background: linear-gradient(
+        90deg,
+        rgba(6, 182, 212, 0.4),
+        rgba(99, 102, 241, 0.1)
+    );
 }
 
 /* ── Status pill ── */
 .status-pill {
-    background: rgba(6,182,212,0.1);
-    border: 1px solid rgba(6,182,212,0.25);
+    background: rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(6, 182, 212, 0.25);
     color: #06b6d4;
 }
 
 /* ── Footer gradient line ── */
 .footer-line {
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(6,182,212,0.4), rgba(99,102,241,0.4), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(6, 182, 212, 0.4),
+        rgba(99, 102, 241, 0.4),
+        transparent
+    );
 }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0a0a0a; }
-::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+}
 
 /* ── Hero ring glow pulse ── */
 @keyframes ringGlow {
-    0%,100% { filter: drop-shadow(0 0 8px rgba(6,182,212,0.3)); }
-    50%      { filter: drop-shadow(0 0 20px rgba(6,182,212,0.6)); }
+    0%,
+    100% {
+        filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.3));
+    }
+    50% {
+        filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.6));
+    }
 }
-.ring-glow { animation: ringGlow 3s ease-in-out infinite; }
+.ring-glow {
+    animation: ringGlow 3s ease-in-out infinite;
+}
 
 /* Progress ring animations for demo mockup */
 @keyframes fillRing {
-    0%   { stroke-dashoffset: 276.5; }
-    100% { stroke-dashoffset: 0; }
+    0% {
+        stroke-dashoffset: 276.5;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
 }
-.ring-fill-dl { animation: fillRing 3s ease-out 0.5s forwards; }
-.ring-fill-ul { animation: fillRing 3s ease-out 1.2s forwards; }
+.ring-fill-dl {
+    animation: fillRing 3s ease-out 0.5s forwards;
+}
+.ring-fill-ul {
+    animation: fillRing 3s ease-out 1.2s forwards;
+}
 
 @keyframes countUp {
-    0%   { opacity: 0; }
-    10%  { opacity: 1; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 1;
+    }
 }
-.count-anim { animation: countUp 0.4s ease-out 0.5s both; }
+.count-anim {
+    animation: countUp 0.4s ease-out 0.5s both;
+}
 
 @keyframes flowUp {
-    0%   { transform: translateY(0); }
-    100% { transform: translateY(-100vh); }
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-100vh);
+    }
 }
