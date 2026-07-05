@@ -219,6 +219,7 @@ def create_app(config: Optional[AppConfig] = None) -> Flask:
         return render_template(
             "index.html",
             server=config.server_name,
+            version=config.version,
             test_duration=config.test_duration_seconds,
         )
 
