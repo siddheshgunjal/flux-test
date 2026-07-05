@@ -8,7 +8,7 @@ RUN npm ci
 COPY templates/ templates/
 COPY static/css/ static/css/
 COPY static/js/ static/js/
-RUN npm run build_app
+RUN npm run build:app
 
 FROM python:3.14-slim
 

@@ -51,10 +51,10 @@ jobs:
         run: npm ci
 
       - name: Build App CSS assets
-        run: npm run build_app
+        run: npm run build:app
        
       - name: Build Website CSS assets
-        run: npm run build_website
+        run: npm run build:website
 
   # ── 3. Docker image build ─────────────────────────────────────────────
   docker-build:
