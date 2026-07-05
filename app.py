@@ -3,8 +3,10 @@ import os
 import random
 import socket
 import time
+import tomllib
 from collections.abc import Generator
 from dataclasses import dataclass, field
+from pathlib import Path
 from threading import Lock
 from typing import Optional, Tuple
 
@@ -30,7 +32,7 @@ class AppConfig:
     server_name: str = field(
         default_factory=lambda: os.getenv("SERVER_NAME") or socket.gethostname()
     )
-    version: str = "0.1.0"
+    version: str = "0.0.0"
     host: str = "0.0.0.0"
     port: int = 4855
     test_duration_seconds: int = 15
@@ -38,13 +40,36 @@ class AppConfig:
     upload_chunk_size: int = 65536
     download_chunk_size: int = 1024 * 1024  # 1 MiB
 
+    @staticmethod
+    def _load_version() -> str:
+        """Read the version from ``pyproject.toml``, falling back to ``"0.0.0"``.
+
+        The ``APP_VERSION`` environment variable always takes precedence when set.
+        """
+        env_version = os.getenv("APP_VERSION")
+        if env_version:
+            return env_version
+
+        pyproject = Path(__file__).resolve().parent / "pyproject.toml"
+        if pyproject.is_file():
+            try:
+                with pyproject.open("rb") as fh:
+                    data = tomllib.load(fh)
+                return data["project"]["version"]
+            except KeyError, tomllib.TOMLDecodeError, OSError:
+                _logger.warning(
+                    "Failed to read version from pyproject.toml", exc_info=True
+                )
+
+        return "0.0.0"
+
     @classmethod
     def from_env(cls) -> "AppConfig":
         """Build a config instance, preferring env vars over defaults."""
         return cls(
             debug=os.getenv("FLASK_DEBUG", "false").lower() == "true",
             server_name=os.getenv("SERVER_NAME") or socket.gethostname(),
-            version=os.getenv("APP_VERSION", "0.1.0"),
+            version=cls._load_version(),
             host=os.getenv("APP_HOST", "0.0.0.0"),
             port=int(os.getenv("APP_PORT", "4855")),
             test_duration_seconds=int(os.getenv("TEST_DURATION_SECONDS", "15")),
