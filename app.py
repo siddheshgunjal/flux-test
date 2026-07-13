@@ -36,7 +36,6 @@ class AppConfig:
     host: str = "0.0.0.0"
     port: int = 4855
     test_duration_seconds: int = 15
-    upload_ceiling_buffer: int = 10
     upload_chunk_size: int = 65536
     download_chunk_size: int = 1024 * 1024  # 1 MiB
 
@@ -73,7 +72,6 @@ class AppConfig:
             host=os.getenv("APP_HOST", "0.0.0.0"),
             port=int(os.getenv("APP_PORT", "4855")),
             test_duration_seconds=int(os.getenv("TEST_DURATION_SECONDS", "15")),
-            upload_ceiling_buffer=int(os.getenv("UPLOAD_CEILING_BUFFER", "10")),
             upload_chunk_size=int(os.getenv("UPLOAD_CHUNK_SIZE", "65536")),
             download_chunk_size=int(os.getenv("DOWNLOAD_CHUNK_SIZE", str(1024 * 1024))),
         )
@@ -281,10 +279,23 @@ def create_app(config: Optional[AppConfig] = None) -> Flask:
 
     @app.route("/upload", methods=["POST"])
     def upload() -> Tuple[Response, int]:
-        """Upload test — reads the client stream until it closes or the safety ceiling is hit.
+        """Upload test — reads the client stream until it closes.
 
         The client **must** send ``Content-Type: application/octet-stream``
         so that the server can distinguish a test upload from form data.
+
+        .. note::
+
+           There is **no hard ceiling** on the read loop.  The loop simply
+           reads until ``request.stream.read()`` returns an empty chunk
+           (client finished) or raises a connection error (client
+           disconnected).  A safety ceiling would cause a half-duplex
+           deadlock on slow connections: the server would stop reading,
+           the client would be unable to flush its outgoing buffer, and
+           the response would never reach the client.
+
+           The gunicorn ``timeout`` (300 s) provides a process-level
+           safety net for genuinely stuck workers.
         """
         content_type = request.content_type or ""
 
@@ -292,17 +303,20 @@ def create_app(config: Optional[AppConfig] = None) -> Flask:
             return _err("Content-Type must be application/octet-stream", 415)
 
         start = time.monotonic()
-        ceiling = config.test_duration_seconds + config.upload_ceiling_buffer
         received_bytes = 0
 
-        while True:
-            if time.monotonic() - start > ceiling:
-                _logger.warning("Upload hit safety ceiling (%ds)", ceiling)
-                break
-            chunk = request.stream.read(config.upload_chunk_size)
-            if not chunk:
-                break
-            received_bytes += len(chunk)
+        try:
+            while True:
+                chunk = request.stream.read(config.upload_chunk_size)
+                if not chunk:
+                    break
+                received_bytes += len(chunk)
+        except (ConnectionError, ConnectionResetError, BrokenPipeError, OSError) as exc:
+            _logger.warning(
+                "Client disconnected during upload after %d bytes: %s",
+                received_bytes,
+                exc,
+            )
 
         elapsed = time.monotonic() - start
 
