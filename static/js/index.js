@@ -425,6 +425,16 @@ function runUploadTest() {
         if (uploadDelayHint)  { uploadDelayHint.style.opacity = '0'; uploadDelayHint.textContent = ''; }
     };
 
+    const abortController = new AbortController();
+
+    // Once the stream closes, all data has been queued for transmission.
+    // The only thing left is waiting for the server to finish reading and
+    // reply.  Start a timeout *now* so that slow mobile uplinks, proxy
+    // buffering, and Cloudflare Tunnel round-trips don't falsely trigger it
+    // during the upload phase.
+    const SERVER_RESPONSE_TIMEOUT_SEC = 120;
+    let serverTimeoutId = null;
+
     // Update UI at 200 ms intervals; also triggers the finalizing hint once the stream closes.
     const timerHandle = setInterval(() => {
         const elapsed = (performance.now() - startTime) / 1000;
@@ -440,7 +450,7 @@ function runUploadTest() {
         }
 
         // Over tunnels/proxies, bytes can reach the edge before the origin reply arrives.
-        // Show an explicit finalizing phase so the UI doesn’t appear stuck.
+        // Show an explicit finalizing phase so the UI doesn't appear stuck.
         if (streamClosed && !finalizingShown) {
             finalizingShown = true;
             setStatus('Upload complete. Finalizing on server…', 'orange');
@@ -450,21 +460,35 @@ function runUploadTest() {
                     uploadDelayHint.style.opacity = '1';
                 }
             }, 5000);
+            // Start the server-response timeout only now — all data has left
+            // the client, we're purely waiting for the server to reply.
+            serverTimeoutId = setTimeout(() => abortController.abort(), SERVER_RESPONSE_TIMEOUT_SEC * 1000);
         }
     }, 200);
 
-    return fetch('/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: stream,
-        duplex: 'half',   // Required by Chrome 105+ for streaming request bodies
-        cache: 'no-store',
-    }).then(res => {
+    try {
+        const res = await fetch('/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: stream,
+            duplex: 'half',   // Required by Chrome 105+ for streaming request bodies
+            cache: 'no-store',
+            signal: abortController.signal,
+        });
+
+        clearTimeout(serverTimeoutId);
         clearInterval(timerHandle);
         clearDelayedHint();
+
         if (!res.ok) {
-            return res.json().then(j => { throw new Error(j.error || `HTTP ${res.status}`); });
+            const ct = res.headers.get('Content-Type') || '';
+            if (ct.includes('application/json')) {
+                const j = await res.json();
+                throw new Error(j.error || `HTTP ${res.status}`);
+            }
+            throw new Error(`Server error (HTTP ${res.status}).  The backend may have restarted or timed out.`);
         }
+
         // Speed uses the fixed test window as denominator so the server
         // response wait time cannot artificially deflate the result.
         const finalMbps = (sentBytes * 8) / (TEST_DURATION_SECONDS * 1024 * 1024);
@@ -477,6 +501,9 @@ function runUploadTest() {
     }).catch(err => {
         clearInterval(timerHandle);
         clearDelayedHint();
+        if (err.name === 'AbortError') {
+            throw new Error('Upload timed out — the server did not respond in time.  The backend worker may have been restarted or the connection may have dropped.');
+        }
         throw err;
     });
 }
