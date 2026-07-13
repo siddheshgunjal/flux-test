@@ -1,6 +1,6 @@
 {
   "name": "fluxtest",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "FluxTest is a self-hosted server network test application",
   "scripts": {
     "build:app": "npx @tailwindcss/cli -i static/css/index.css -o static/lib/css/index.css --minify",
