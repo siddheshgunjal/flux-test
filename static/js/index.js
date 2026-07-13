@@ -388,7 +388,7 @@ async function runDownloadTest() {
 // ── Upload test ───────────────────────────────────────────────────────
 // Uses fetch + ReadableStream so the upload runs for exactly TEST_DURATION_SECONDS,
 // then the stream closes and the server returns the final result.
-function runUploadTest() {
+async function runUploadTest() {
     resetCard('ul');
     setStatus('Testing upload…', 'purple');
     const uploadDelayHint = document.getElementById('upload-delay-hint');
@@ -498,14 +498,16 @@ function runUploadTest() {
         setCircle('ul-circle', 1);
         setStatus('Upload complete!', 'green');
         return finalMbps;
-    }).catch(err => {
+
+    } catch (err) {
+        clearTimeout(serverTimeoutId);
         clearInterval(timerHandle);
         clearDelayedHint();
         if (err.name === 'AbortError') {
             throw new Error('Upload timed out — the server did not respond in time.  The backend worker may have been restarted or the connection may have dropped.');
         }
         throw err;
-    });
+    }
 }
 
 // ── Test orchestration ────────────────────────────────────────────────
