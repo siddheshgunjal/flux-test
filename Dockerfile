@@ -40,8 +40,9 @@ USER appuser
 EXPOSE 4855
 
 # Health check
+# Use Python from the runtime image; curl is not installed in python:3.14-slim.
 HEALTHCHECK --interval=30s --timeout=3s \
-    CMD curl -sf http://localhost:4855/health || exit 1
+    CMD python -c "import urllib.request; r=urllib.request.urlopen('http://127.0.0.1:4855/health', timeout=3); raise SystemExit(0 if r.status == 200 else 1)"
 
 # Run via the virtualenv created by uv sync
 ENV PATH="/app/.venv/bin:$PATH"
